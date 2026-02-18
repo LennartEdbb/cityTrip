@@ -74,7 +74,6 @@ async function loadMarkers() {
     const loc = locations[i]
     if (!loc?.address) continue
 
-    // 1 Sek Pause -> freundlich zu Nominatim
     if (i > 0) await sleep(1000)
 
     const coords = await geocode(loc.address)
