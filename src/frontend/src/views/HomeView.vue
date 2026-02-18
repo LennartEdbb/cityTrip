@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 <template>
   <div class="page">
     <div ref="mapEl" class="map"></div>
