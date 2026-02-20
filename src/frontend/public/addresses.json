@@ -1,4 +1,22 @@
 [
-  { "label": "DBB", "name": "DBB-Detmold", "address": "Elisabethstraße 86, 32756 Detmold"},
-  { "label": "Cafe", "name": "Cafe Mix", "address": "Meierstraße 12, 32756 Detmold"}
+  {
+    "id": "dbb",
+    "label": "DBB",
+    "name": "DBB-Detmold",
+    "address": "Elisabethstraße 86, 32756 Detmold",
+    "tags": ["Burgers", "Italian", "Grilled"],
+    "rating": 4.6,
+    "reviews": 12,
+    "imageUrl": "/images/dbb.jpg"
+  },
+  {
+    "id": "cafe-mix",
+    "label": "Cafe",
+    "name": "Cafe Mix",
+    "address": "Meierstraße 12, 32756 Detmold",
+    "tags": ["Cafe", "Breakfast", "Coffee"],
+    "rating": 4.4,
+    "reviews": 31,
+    "imageUrl": "/images/cafe.jpg"
+  }
 ]
