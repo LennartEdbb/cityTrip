@@ -82,7 +82,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onBeforeUnmount, ref } from "vue"
+import { computed, onBeforeUnmount, onMounted, ref } from "vue"
 import L from "leaflet"
 import "leaflet/dist/leaflet.css"
 import OwnLocation from "./OwnLocation.vue"
@@ -110,7 +110,6 @@ let userLatLng: L.LatLng | null = null
 let userMarker: L.CircleMarker | null = null
 let accuracyHalo: L.Circle | null = null
 
-// store markers for venues
 let venueMarkers = new Map<string, L.Marker>()
 
 const venues = ref<Venue[]>([])
@@ -190,7 +189,6 @@ function updateDistances() {
   }
 }
 
-/** marker = red dot + label text (no svg/image) */
 function createRedDotLabelIcon(label?: string) {
   const safe = label ? escapeHtml(label) : ""
   return L.divIcon({
@@ -201,13 +199,12 @@ function createRedDotLabelIcon(label?: string) {
         ${safe ? `<span class="event-marker__label">${safe}</span>` : ``}
       </div>
     `,
-    iconSize: [1, 1], // size comes from CSS
-    iconAnchor: [7, 7], // anchor at dot center-ish
+    iconSize: [1, 1],
+    iconAnchor: [7, 7],
     popupAnchor: [0, -12],
   })
 }
 
-/** Smooth simple route */
 function drawRoute(from: L.LatLng, to: L.LatLng) {
   if (!map) return
   if (routeLine) map.removeLayer(routeLine)
@@ -239,6 +236,11 @@ function clearVenueMarkers() {
   if (!map) return
   for (const [, marker] of venueMarkers) map.removeLayer(marker)
   venueMarkers.clear()
+}
+
+function centerOnUser(zoom = 16) {
+  if (!map || !userLatLng) return
+  map.setView(userLatLng, zoom, { animate: false })
 }
 
 async function loadVenuesAndMarkers() {
@@ -284,8 +286,7 @@ async function loadVenuesAndMarkers() {
   }
 
   updateDistances()
-
-  if (bounds.isValid()) {
+  if (!userLatLng && bounds.isValid()) {
     map.fitBounds(bounds, { padding: [60, 180], maxZoom: 16 })
   }
 }
@@ -314,6 +315,8 @@ function addUserMarker(position: GeolocationPosition) {
     fillOpacity: 1,
   }).addTo(map)
 
+  centerOnUser(16)
+
   updateDistances()
 }
 
@@ -340,6 +343,7 @@ onMounted(async () => {
   window.addEventListener("resize", handleResize, { passive: true })
 
   await loadVenuesAndMarkers()
+  centerOnUser(16)
 })
 
 onBeforeUnmount(() => {
@@ -353,7 +357,6 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-/* Fullscreen */
 :global(html),
 :global(body),
 :global(#app) {

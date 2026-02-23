@@ -1,22 +1,38 @@
 [
   {
-    "id": "dbb",
-    "label": "DBB",
-    "name": "DBB-Detmold",
-    "address": "Elisabethstraße 86, 32756 Detmold",
-    "tags": ["Burgers", "Italian", "Grilled"],
-    "rating": 4.6,
-    "reviews": 12,
-    "imageUrl": "/images/dbb.jpg"
+    "id": "lwl-museum",
+    "label": "Museum",
+    "name": "LWL-Freilichtmuseum Detmold",
+    "address": "Krummes Haus, 32760 Detmold",
+    "tags": ["Museum", "Culture", "Outdoor"],
+    "rating": 4.7,
+    "reviews": 245
   },
   {
-    "id": "cafe-mix",
-    "label": "Cafe",
-    "name": "Cafe Mix",
-    "address": "Meierstraße 12, 32756 Detmold",
-    "tags": ["Cafe", "Breakfast", "Coffee"],
-    "rating": 4.4,
-    "reviews": 31,
-    "imageUrl": "/images/cafe.jpg"
+    "id": "hermannsdenkmal",
+    "label": "Hermannsdenkmal",
+    "name": "Hermannsdenkmal",
+    "address": "Grotenburg 50, 32760 Detmold",
+    "tags": ["Monument", "Sightseeing", "Historic"],
+    "rating": 4.6,
+    "reviews": 189
+  },
+  {
+    "id": "schloss-detmold",
+    "label": "Castle",
+    "name": "Residenzschloss Detmold",
+    "address": "Schlossplatz 1, 32756 Detmold",
+    "tags": ["Castle", "Museum", "Historic"],
+    "rating": 4.5,
+    "reviews": 132
+  },
+  {
+    "id": "stanne",
+    "label": "Restaurant",
+    "name": "Strate's Brauhaus",
+    "address": "Lange Straße 34, 32756 Detmold",
+    "tags": ["Restaurant", "Brewery", "German Cuisine"],
+    "rating": 4.3,
+    "reviews": 98
   }
 ]
