@@ -34,5 +34,23 @@
     "tags": ["Restaurant", "Brewery", "German Cuisine"],
     "rating": 4.3,
     "reviews": 98
+  },
+  {
+    "id": "dbb",
+    "label": "DBB",
+    "name": "DBB-Detmold",
+    "address": "Elisabethstraße 86, 32756 Detmold",
+    "tags": ["Burgers", "Italian", "Grilled"],
+    "rating": 4.6,
+    "reviews": 12
+  },
+  {
+    "id": "cafe-mix",
+    "label": "Cafe",
+    "name": "Cafe Mix",
+    "address": "Meierstraße 12, 32756 Detmold",
+    "tags": ["Cafe", "Breakfast", "Coffee"],
+    "rating": 4.4,
+    "reviews": 31
   }
 ]

@@ -1,6 +1,5 @@
 <template>
   <Map />
-  <EventAdd />
 </template>
 
 <script setup lang="ts">

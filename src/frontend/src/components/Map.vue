@@ -3,31 +3,29 @@
     <!-- Top header -->
     <div class="top-ui">
       <div class="top-row">
-        <button class="icon-btn" aria-label="Menu">
-          <svg viewBox="0 0 24 24" fill="none">
-            <path
-              d="M4 7h16M4 12h16M4 17h10"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-            />
+        <EventAddPanel />
+        <div class="title">City Trip</div>
+        <button class="icon-btn" @click="toggleViewMode">
+          <svg v-if="viewMode === 'map'" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
+          </svg>
+          <svg v-else width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 7V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7M3 7l9 4 9-4"/>
           </svg>
         </button>
-
-        <div class="title">VENUES NEAR YOU</div>
-        <div class="spacer" aria-hidden="true" />
       </div>
+      <RadiusFilter @radius-change="onRadiusChange" />
     </div>
 
-    <!-- Map -->
-    <div ref="mapEl" class="map" />
+    <div v-if="viewMode === 'map'" ref="mapEl" class="map" />
 
-    <!-- Cards -->
-    <div class="sheet" v-if="sortedVenues.length">
+    <VenueListView v-else :venues="filteredVenues" :radius="radius" />
+
+    <div v-if="viewMode === 'map' && filteredVenues.length" class="sheet">
       <div class="sheet-handle" />
       <div class="cards">
         <button
-          v-for="(v, idx) in sortedVenues"
+          v-for="(v, idx) in filteredVenues"
           :key="v.id"
           class="card"
           type="button"
@@ -45,11 +43,11 @@
             </div>
           </div>
 
-          <div class="card-mid" v-if="typeof v.rating === 'number'">
-            <span class="stars">{{ stars(v.rating) }}</span>
-            <span class="reviews" v-if="typeof v.reviews === 'number'">
-              {{ v.reviews }} reviews
-            </span>
+          <!-- Event details instead of rating -->
+          <div class="card-mid" v-if="v.whenText || v.priceText || v.accessible">
+            <span v-if="v.whenText">🗓️ {{ v.whenText }}</span>
+            <span v-if="v.priceText">🎟️ {{ v.priceText }}</span>
+            <span v-if="v.accessible">♿ barrierefrei</span>
           </div>
 
           <div class="tag-row" v-if="v.tags?.length">
@@ -67,8 +65,7 @@
       </button>
 
       <button class="nav-fab" aria-label="Primary action">
-        <span class="fab-dot" />
-        <span class="cal-ic">📅</span>
+        <span class="nav-ic">⚙️</span>
       </button>
 
       <button class="nav-item">
@@ -86,20 +83,106 @@ import { computed, onBeforeUnmount, onMounted, ref } from "vue"
 import L from "leaflet"
 import "leaflet/dist/leaflet.css"
 import OwnLocation from "./OwnLocation.vue"
+import EventAddPanel from "./EventAddPanel.vue"
+import RadiusFilter from "./RadiusFilter.vue"
+import VenueListView from "./VenueListView.vue"
 
 type Venue = {
   id: string
   label?: string
+
   name: string
   address: string
   tags?: string[]
-  rating?: number
-  reviews?: number
+
+  whenText?: string
+  priceText?: string
+  accessible?: boolean
 
   lat?: number
   lng?: number
   distanceM?: number
   distanceText?: string
+}
+
+type ZeitmodellEinmalig = {
+  typ: "einmalig"
+  id?: number
+  datum: string // YYYY-MM-DD
+  von?: string | null // HH:mm:ss
+  bis?: string | null
+  hinweis?: string | null
+}
+
+type ZeitmodellSerie = {
+  typ: "serie"
+  id?: number
+  gueltig_von: string // YYYY-MM-DD
+  gueltig_bis: string // YYYY-MM-DD
+  von?: string | null
+  bis?: string | null
+  intervall_wochen?: number | null
+  wochentage?: string[] | null // ["Montag", ...]
+  hinweis?: string | null
+}
+
+type ZeitmodellSlot = {
+  id?: number
+  wochentag: string // "Montag" ...
+  uhrzeit_von: string // HH:mm:ss
+  uhrzeit_bis: string // HH:mm:ss
+}
+
+type ZeitmodellDurchgaengig = {
+  typ: "durchgaengig"
+  id?: number
+  gueltig_von?: string | null
+  gueltig_bis?: string | null
+  slots?: ZeitmodellSlot[] | null
+  hinweis?: string | null
+}
+
+type ApiZeitmodell = ZeitmodellEinmalig | ZeitmodellSerie | ZeitmodellDurchgaengig
+
+type ApiEvent = {
+  id: number
+  bezeichnung: string
+  beschreibung?: string | null
+  bemerkung?: string | null
+  barrierefrei: boolean
+  aktiv: boolean
+  kategorien: string[]
+  location: {
+    id: number
+    bezeichnung: string
+    beschreibung?: string | null
+    bemerkung?: string | null
+    lat: number
+    lon: number
+    anschrift: {
+      strasse: string
+      hausnummer: string
+      ort: string
+      plz: string
+      land: string
+      id?: number
+    }
+  }
+  zeitmodell: ApiZeitmodell
+  eintritt: {
+    id?: number
+    kostenmodell: string // Kostenlos | Gebühr | ...
+    hinweis?: string | null
+    tarife?: Array<{
+      bezeichnung: string
+      dauer_typ?: string
+      dauer_wert?: number
+      preis: number
+      kriterium?: string
+      waehrung: string
+      id?: number
+    }>
+  }
 }
 
 const mapEl = ref<HTMLDivElement | null>(null)
@@ -109,10 +192,13 @@ let routeLine: L.Polyline | null = null
 let userLatLng: L.LatLng | null = null
 let userMarker: L.CircleMarker | null = null
 let accuracyHalo: L.Circle | null = null
+let radiusCircle: L.Circle | null = null
 
 let venueMarkers = new Map<string, L.Marker>()
 
 const venues = ref<Venue[]>([])
+const viewMode = ref<'map' | 'list'>('map')
+const radius = ref(10) // km
 
 const sortedVenues = computed(() => {
   const list = [...venues.value]
@@ -121,10 +207,9 @@ const sortedVenues = computed(() => {
   return list.sort((a, b) => (a.distanceM ?? 9e15) - (b.distanceM ?? 9e15))
 })
 
-function stars(r: number) {
-  const full = Math.max(0, Math.min(5, Math.round(r)))
-  return "★★★★★".slice(0, full) + "☆☆☆☆☆".slice(0, 5 - full)
-}
+const filteredVenues = computed(() => {
+  return sortedVenues.value.filter(v => !v.distanceM || v.distanceM <= radius.value * 1000)
+})
 
 function escapeHtml(s: string) {
   return String(s).replace(/[&<>"']/g, (c) => {
@@ -137,25 +222,6 @@ function escapeHtml(s: string) {
     }
     return m[c] ?? c
   })
-}
-
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
-
-async function geocode(address: string): Promise<[number, number] | null> {
-  const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
-    address
-  )}&limit=1`
-
-  const res = await fetch(url, { headers: { Accept: "application/json" } })
-  if (!res.ok) return null
-
-  const data = await res.json()
-  if (Array.isArray(data) && data.length > 0) {
-    const lat = parseFloat(data[0].lat)
-    const lon = parseFloat(data[0].lon)
-    if (Number.isFinite(lat) && Number.isFinite(lon)) return [lat, lon]
-  }
-  return null
 }
 
 function haversineMeters(a: L.LatLng, b: L.LatLng) {
@@ -205,6 +271,17 @@ function createRedDotLabelIcon(label?: string) {
   })
 }
 
+function createPopupContent(v: Venue) {
+  const extra = [v.whenText, v.priceText].filter(Boolean).join(" · ")
+  return `
+    <div class="popup">
+      <div class="popup-title">${escapeHtml(v.name)}</div>
+      <div class="popup-sub">${escapeHtml(v.address)}</div>
+      ${extra ? `<div class="popup-sub">${escapeHtml(extra)}</div>` : ""}
+    </div>
+  `
+}
+
 function drawRoute(from: L.LatLng, to: L.LatLng) {
   if (!map) return
   if (routeLine) map.removeLayer(routeLine)
@@ -243,52 +320,167 @@ function centerOnUser(zoom = 16) {
   map.setView(userLatLng, zoom, { animate: false })
 }
 
+function toggleViewMode() {
+  viewMode.value = viewMode.value === 'map' ? 'list' : 'map'
+}
+
+function onRadiusChange(newRadius: number) {
+  radius.value = newRadius
+  if (radiusCircle && userLatLng) {
+    radiusCircle.setRadius(newRadius * 1000)
+  }
+  updateMarkers()
+}
+
+function updateMarkers() {
+  if (viewMode.value === 'map') {
+    clearVenueMarkers()
+    const bounds = L.latLngBounds([])
+    for (const v of filteredVenues.value) {
+      if (typeof v.lat !== "number" || typeof v.lng !== "number") continue
+      const coords = L.latLng(v.lat, v.lng)
+      const marker = L.marker(coords, { icon: createRedDotLabelIcon(v.label) })
+      marker.bindPopup(createPopupContent(v), { className: "clean-popup", closeButton: false })
+      marker.addTo(map!)
+      venueMarkers.set(v.id, marker)
+      bounds.extend(coords)
+    }
+    if (!userLatLng && bounds.isValid()) {
+      map!.fitBounds(bounds, { padding: [60, 180], maxZoom: 16 })
+    }
+  }
+}
+
+function hhmm(t?: string | null) {
+  return t ? t.slice(0, 5) : ""
+}
+
+function fmtTimeRange(von?: string | null, bis?: string | null) {
+  const a = hhmm(von)
+  const b = hhmm(bis)
+  if (a && b) return `${a}–${b}`
+  if (a) return a
+  return ""
+}
+
+function uniq<T>(arr: T[]) {
+  return Array.from(new Set(arr))
+}
+
+function fmtWhen(z: ApiZeitmodell) {
+  if (!z) return undefined
+
+  if (z.typ === "einmalig") {
+    const time = fmtTimeRange(z.von, z.bis)
+    return `${z.datum}${time ? ` · ${time}` : ""}`
+  }
+
+  if (z.typ === "serie") {
+    const days = (z.wochentage ?? []).filter(Boolean).join(", ")
+    const time = fmtTimeRange(z.von, z.bis)
+    const every =
+      z.intervall_wochen && z.intervall_wochen > 1 ? `alle ${z.intervall_wochen} Wochen` : "wöchentlich"
+
+    const range = `${z.gueltig_von}–${z.gueltig_bis}`
+    const parts = [range, days || undefined, time || undefined, every].filter(Boolean)
+
+    return parts.join(" · ")
+  }
+
+  // durchgaengig
+  const slots = (z.slots ?? []).filter(Boolean)
+  if (!slots.length) return "Öffnungszeiten"
+
+  const dayMap: Record<string, string> = {
+    Montag: "Mo",
+    Dienstag: "Di",
+    Mittwoch: "Mi",
+    Donnerstag: "Do",
+    Freitag: "Fr",
+    Samstag: "Sa",
+    Sonntag: "So",
+  }
+
+  const lines = slots.map((s) => {
+    const d = dayMap[s.wochentag] ?? s.wochentag
+    const tr = fmtTimeRange(s.uhrzeit_von, s.uhrzeit_bis)
+    return `${d} ${tr}`.trim()
+  })
+
+  // keep it short in cards
+  const short = uniq(lines).slice(0, 3).join(" · ")
+  return lines.length > 3 ? `${short} · …` : short
+}
+
+function fmtPrice(e: ApiEvent) {
+  if (!e.eintritt) return undefined
+  if (e.eintritt.kostenmodell?.toLowerCase() === "kostenlos") return "Kostenlos"
+  const t = e.eintritt.tarife?.[0]
+  if (t && Number.isFinite(t.preis)) return `${t.preis} ${t.waehrung}`
+  return e.eintritt.kostenmodell
+}
+
+function toVenue(e: ApiEvent): Venue {
+  const a = e.location?.anschrift
+  const address = a
+    ? `${a.strasse} ${a.hausnummer}, ${a.plz} ${a.ort}, ${a.land}`
+    : e.location?.bezeichnung ?? ""
+
+  return {
+    id: String(e.id),
+    name: e.bezeichnung,
+    address,
+    tags: e.kategorien ?? [],
+    accessible: !!e.barrierefrei,
+    whenText: e.zeitmodell ? fmtWhen(e.zeitmodell) : undefined,
+    priceText: fmtPrice(e),
+    lat: e.location?.lat,
+    lng: e.location?.lon,
+    label: e.bezeichnung,
+  }
+}
+
 async function loadVenuesAndMarkers() {
   if (!map) return
 
-  const res = await fetch("/addresses.json", { cache: "no-store" })
-  if (!res.ok) {
-    console.error("addresses.json not found in /public")
+  const API_BASE =
+    (import.meta as any).env?.VITE_API_BASE_URL?.replace(/\/$/, "") || "http://127.0.0.1:8000"
+  const url = `${API_BASE}/activities`
+
+  let list: ApiEvent[]
+  try {
+    const res = await fetch(url, {
+      method: "GET",
+      mode: "cors",
+      cache: "no-store",
+      headers: { Accept: "application/json" },
+    })
+
+    if (!res.ok) {
+      const text = await res.text().catch(() => "")
+      throw new Error(`GET ${url} failed: ${res.status} ${res.statusText} ${text}`)
+    }
+
+    const data = await res.json()
+
+    list = Array.isArray(data) ? (data as ApiEvent[]) : (data?.activities as ApiEvent[])
+
+    if (!Array.isArray(list)) {
+      console.error("Server did not return ApiEvent[]:", data)
+      return
+    }
+  } catch (err) {
+    console.error("Failed to fetch events from server:", err)
     return
   }
 
-  venues.value = (await res.json()) as Venue[]
-
-  clearVenueMarkers()
-
-  const bounds = L.latLngBounds([])
-
-  for (let i = 0; i < venues.value.length; i++) {
-    const v = venues.value[i]
-    if (!v?.address) continue
-
-    if (i > 0) await sleep(650)
-
-    const coords = await geocode(v.address)
-    if (!coords) continue
-
-    v.lat = coords[0]
-    v.lng = coords[1]
-
-    const popupHtml = `
-      <div class="popup">
-        <div class="popup-title">${escapeHtml(v.name)}</div>
-        <div class="popup-sub">${escapeHtml(v.address)}</div>
-      </div>
-    `
-
-    const marker = L.marker(coords, { icon: createRedDotLabelIcon(v.label) })
-      .addTo(map)
-      .bindPopup(popupHtml, { className: "clean-popup", closeButton: false })
-
-    venueMarkers.set(v.id, marker)
-    bounds.extend(marker.getLatLng())
-  }
+  venues.value = list
+    .filter((e) => e?.aktiv !== false)
+    .map(toVenue)
+    .filter((v) => Number.isFinite(v.lat) && Number.isFinite(v.lng))
 
   updateDistances()
-  if (!userLatLng && bounds.isValid()) {
-    map.fitBounds(bounds, { padding: [60, 180], maxZoom: 16 })
-  }
+  updateMarkers()
 }
 
 function addUserMarker(position: GeolocationPosition) {
@@ -298,6 +490,7 @@ function addUserMarker(position: GeolocationPosition) {
 
   if (userMarker) map.removeLayer(userMarker)
   if (accuracyHalo) map.removeLayer(accuracyHalo)
+  if (radiusCircle) map.removeLayer(radiusCircle)
 
   accuracyHalo = L.circle(userLatLng, {
     radius: 70,
@@ -306,6 +499,16 @@ function addUserMarker(position: GeolocationPosition) {
     fillColor: "#2f5bff",
     fillOpacity: 0.12,
   }).addTo(map)
+
+  radiusCircle = L.circle(userLatLng, {
+    radius: radius.value * 1000,
+    color: "#007bff",
+    weight: 2,
+    fillColor: "#007bff",
+    fillOpacity: 0.1,
+  }).addTo(map)
+
+  updateDistances()
 
   userMarker = L.circleMarker(userLatLng, {
     radius: 8,
@@ -316,8 +519,6 @@ function addUserMarker(position: GeolocationPosition) {
   }).addTo(map)
 
   centerOnUser(16)
-
-  updateDistances()
 }
 
 function handleResize() {
@@ -343,7 +544,7 @@ onMounted(async () => {
   window.addEventListener("resize", handleResize, { passive: true })
 
   await loadVenuesAndMarkers()
-  centerOnUser(16)
+
 })
 
 onBeforeUnmount(() => {
@@ -355,7 +556,6 @@ onBeforeUnmount(() => {
   }
 })
 </script>
-
 <style scoped>
 :global(html),
 :global(body),
@@ -390,7 +590,6 @@ onBeforeUnmount(() => {
   right: 18px;
   top: calc(18px + env(safe-area-inset-top));
   z-index: 500;
-  pointer-events: none;
 }
 
 .top-row {
@@ -507,12 +706,12 @@ onBeforeUnmount(() => {
 }
 
 .stars {
-  color: #2f5bff;
+  color: #007bff;
   letter-spacing: 0.12em;
 }
 
 .reviews {
-  color: rgba(47, 91, 255, 0.9);
+  color: #007bff;
   font-weight: 700;
 }
 
@@ -564,7 +763,7 @@ onBeforeUnmount(() => {
   height: 68px;
   border-radius: 999px;
   border: 0;
-  background: #2f5bff;
+  background: #007bff;
   color: white;
   margin: -26px auto 0 auto;
   box-shadow: 0 22px 50px rgba(47, 91, 255, 0.35);
@@ -634,7 +833,6 @@ onBeforeUnmount(() => {
   line-height: 1.25;
 }
 
-/* ✅ Red dot + label marker (no image/svg) */
 .event-marker {
   background: transparent;
   border: 0;
