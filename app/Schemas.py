@@ -183,3 +183,43 @@ class ActivityOut(BaseModel):
     location: LocationOut
     zeitmodell: ZeitmodellOut
     eintritt: Optional[EintrittOut] = None
+
+    # --- Update Schemas ---
+class AnschriftUpdateIn(BaseModel):
+    strasse: Optional[str] = None
+    hausnummer: Optional[str] = None
+    ort: Optional[str] = None
+    plz: Optional[str] = None
+    land: Optional[str] = None
+
+class LocationUpdateIn(BaseModel):
+    bezeichnung: Optional[str] = None
+    beschreibung: Optional[str] = None
+    bemerkung: Optional[str] = None
+    lat: Optional[float] = None
+    lon: Optional[float] = None
+    anschrift: Optional[AnschriftUpdateIn] = None
+
+class ActivityUpdateIn(BaseModel):
+    bezeichnung: Optional[str] = None
+    beschreibung: Optional[str] = None
+    bemerkung: Optional[str] = None
+    kategorien: Optional[List[KategorieEnum]] = None
+    barrierefrei: Optional[bool] = None
+    aktiv: Optional[bool] = None
+
+    # beim Update nur Location wechseln (separates Location-Update über /locations)
+    location_id: Optional[int] = None
+
+    # optional: komplett ersetzen / entfernen
+    zeitmodell: Optional[ZeitmodellIn] = None
+    eintritt: Optional[EintrittIn] = None
+
+# --- Meta ---
+class MetaEnumsOut(BaseModel):
+    kategorien: List[str] = Field(default_factory=list)
+    kostenmodelle: List[str] = Field(default_factory=list)
+    waehrungen: List[str] = Field(default_factory=list)
+    dauertypen: List[str] = Field(default_factory=list)
+    wochentage: List[str] = Field(default_factory=list)
+    rollen: List[str] = Field(default_factory=list)
