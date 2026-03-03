@@ -5,87 +5,81 @@
       <div class="top-row">
         <EventAddPanel />
         <div class="title">City Trip</div>
-        <button class="icon-btn" @click="toggleViewMode">
-          <svg v-if="viewMode === 'map'" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
+        <button class="icon-btn" type="button" @click="toggleViewMode">
+          <svg
+            v-if="viewMode === 'map'"
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <path d="M4 6h16M4 10h16M4 14h16M4 18h16" />
           </svg>
-          <svg v-else width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M3 7V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7M3 7l9 4 9-4"/>
+          <svg
+            v-else
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <path
+              d="M3 7V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7M3 7l9 4 9-4"
+            />
           </svg>
         </button>
       </div>
       <RadiusFilter @radius-change="onRadiusChange" />
     </div>
 
-    <div v-if="viewMode === 'map'" ref="mapEl" class="map" />
+    <div ref="mapEl" class="map" v-show="viewMode === 'map'" />
 
-    <VenueListView v-else :venues="filteredVenues" :radius="radius" />
-
-    <div v-if="viewMode === 'map' && filteredVenues.length" class="sheet">
-      <div class="sheet-handle" />
-      <div class="cards">
-        <button
-          v-for="(v, idx) in filteredVenues"
-          :key="v.id"
-          class="card"
-          type="button"
-          @click="focusVenue(v)"
-        >
-          <div class="card-top">
-            <div class="card-title">
-              <span class="rank">{{ idx + 1 }}.</span>
-              <span class="name">{{ v.name }}</span>
-            </div>
-
-            <div class="distance">
-              <span class="pin">📍</span>
-              <span>{{ v.distanceText ?? "—" }}</span>
-            </div>
-          </div>
-
-          <!-- Event details instead of rating -->
-          <div class="card-mid" v-if="v.whenText || v.priceText || v.accessible">
-            <span v-if="v.whenText">🗓️ {{ v.whenText }}</span>
-            <span v-if="v.priceText">🎟️ {{ v.priceText }}</span>
-            <span v-if="v.accessible">♿ barrierefrei</span>
-          </div>
-
-          <div class="tag-row" v-if="v.tags?.length">
-            <span class="tag" v-for="t in v.tags" :key="t">{{ t }}</span>
-          </div>
-        </button>
-      </div>
+    <div class="list-layer" v-show="viewMode === 'list'">
+      <FavouritesView
+        v-if="activeTab === 'favourites'"
+        :venues="sortedVenues"
+        @select="focusVenue"
+      />
+      <VenueListView
+        v-else
+        :venues="filteredVenues"
+        :radius="radius"
+      />
     </div>
 
-    <!-- Bottom nav -->
-    <div class="bottom-nav">
-      <button class="nav-item">
-        <span class="nav-ic">⚙️</span>
-        <span>Settings</span>
-      </button>
+    <VenueCardsSheet
+      :show="viewMode === 'map'"
+      :venues="filteredVenues"
+      :isFav="isFavourite"
+      @toggle-fav="toggleFavourite"
+      @select="focusVenue"
+    />
 
-      <button class="nav-fab" aria-label="Primary action">
-        <span class="nav-ic">⚙️</span>
-      </button>
-
-      <button class="nav-item">
-        <span class="nav-ic">📈</span>
-        <span>Activity</span>
-      </button>
-    </div>
+    <!-- bottom nav -->
+    <BottomNav
+      :activeTab="activeTab"
+      @tab="onTab"
+    />
 
     <OwnLocation @location-obtained="addUserMarker" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from "vue"
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue"
 import L from "leaflet"
 import "leaflet/dist/leaflet.css"
 import OwnLocation from "./OwnLocation.vue"
 import EventAddPanel from "./EventAddPanel.vue"
 import RadiusFilter from "./RadiusFilter.vue"
 import VenueListView from "./VenueListView.vue"
+import BottomNav from "./BottomNav.vue"
+import VenueCardsSheet from "./VenueCardsSheet.vue"
+import FavouritesView from "@/views/FavouritesView.vue"
+import { useFavourites } from "@/store/favourites"
 
 type Venue = {
   id: string
@@ -200,6 +194,10 @@ const venues = ref<Venue[]>([])
 const viewMode = ref<'map' | 'list'>('map')
 const radius = ref(10) // km
 
+const activeTab = ref<"home" | "favourites" | "settings">("home")
+
+const { isFavourite, toggleFavourite } = useFavourites()
+
 const sortedVenues = computed(() => {
   const list = [...venues.value]
   const hasDistances = list.some((v) => typeof v.distanceM === "number")
@@ -208,7 +206,38 @@ const sortedVenues = computed(() => {
 })
 
 const filteredVenues = computed(() => {
-  return sortedVenues.value.filter(v => !v.distanceM || v.distanceM <= radius.value * 1000)
+  return sortedVenues.value.filter((v) => !v.distanceM || v.distanceM <= radius.value * 1000)
+})
+
+const favouriteVenues = computed(() => {
+  return sortedVenues.value.filter((v) => isFavourite(v.id))
+})
+
+const listVenues = computed(() => {
+  return activeTab.value === "favourites" ? favouriteVenues.value : filteredVenues.value
+})
+
+function onTab(t: "home" | "favourites" | "settings") {
+  activeTab.value = t
+
+  if (t === "favourites") {
+    viewMode.value = "list"
+  } else if (t === "home") {
+    viewMode.value = "map"
+  } else {
+  }
+}
+
+function toggleViewMode() {
+  viewMode.value = viewMode.value === "map" ? "list" : "map"
+}
+
+watch(viewMode, async (mode) => {
+  if (mode === "map") {
+    await nextTick()
+    map?.invalidateSize()
+    updateMarkers()
+  }
 })
 
 function escapeHtml(s: string) {
@@ -299,6 +328,9 @@ function drawRoute(from: L.LatLng, to: L.LatLng) {
 
 function focusVenue(v: Venue) {
   if (!map || typeof v.lat !== "number" || typeof v.lng !== "number") return
+
+  if (viewMode.value !== "map") viewMode.value = "map"
+
   const latlng = L.latLng(v.lat, v.lng)
 
   map.setView(latlng, Math.max(map.getZoom(), 16), { animate: true })
@@ -320,34 +352,30 @@ function centerOnUser(zoom = 16) {
   map.setView(userLatLng, zoom, { animate: false })
 }
 
-function toggleViewMode() {
-  viewMode.value = viewMode.value === 'map' ? 'list' : 'map'
-}
-
 function onRadiusChange(newRadius: number) {
   radius.value = newRadius
-  if (radiusCircle && userLatLng) {
-    radiusCircle.setRadius(newRadius * 1000)
-  }
+  if (radiusCircle && userLatLng) radiusCircle.setRadius(newRadius * 1000)
   updateMarkers()
 }
 
 function updateMarkers() {
-  if (viewMode.value === 'map') {
-    clearVenueMarkers()
-    const bounds = L.latLngBounds([])
-    for (const v of filteredVenues.value) {
-      if (typeof v.lat !== "number" || typeof v.lng !== "number") continue
-      const coords = L.latLng(v.lat, v.lng)
-      const marker = L.marker(coords, { icon: createRedDotLabelIcon(v.label) })
-      marker.bindPopup(createPopupContent(v), { className: "clean-popup", closeButton: false })
-      marker.addTo(map!)
-      venueMarkers.set(v.id, marker)
-      bounds.extend(coords)
-    }
-    if (!userLatLng && bounds.isValid()) {
-      map!.fitBounds(bounds, { padding: [60, 180], maxZoom: 16 })
-    }
+  if (!map) return
+  if (viewMode.value !== "map") return
+
+  clearVenueMarkers()
+  const bounds = L.latLngBounds([])
+
+  for (const v of filteredVenues.value) {
+    if (typeof v.lat !== "number" || typeof v.lng !== "number") continue
+    const coords = L.latLng(v.lat, v.lng)
+    const marker = L.marker(coords, { icon: createRedDotLabelIcon(v.label) })
+    marker.bindPopup(createPopupContent(v), { className: "clean-popup", closeButton: false })
+    marker.addTo(map)
+    venueMarkers.set(v.id, marker)
+    bounds.extend(coords)
+  }
+  if (!userLatLng && bounds.isValid()) {
+    map.fitBounds(bounds, { padding: [60, 180], maxZoom: 16 })
   }
 }
 
@@ -407,7 +435,6 @@ function fmtWhen(z: ApiZeitmodell) {
     return `${d} ${tr}`.trim()
   })
 
-  // keep it short in cards
   const short = uniq(lines).slice(0, 3).join(" · ")
   return lines.length > 3 ? `${short} · …` : short
 }
@@ -538,7 +565,6 @@ onMounted(async () => {
     maxZoom: 20,
   }).addTo(map)
 
-  L.control.zoom({ position: "bottomright" }).addTo(map)
 
   queueMicrotask(() => map?.invalidateSize())
   window.addEventListener("resize", handleResize, { passive: true })
@@ -576,6 +602,9 @@ onBeforeUnmount(() => {
   height: 100dvh;
   background: #f6f7fb;
   overflow: hidden;
+  --nav-h: 72px;
+  --nav-gap: 14px;
+  --nav-bottom: calc(14px + env(safe-area-inset-bottom));
 }
 
 .map {
@@ -583,7 +612,17 @@ onBeforeUnmount(() => {
   inset: 0;
 }
 
-/* Top UI */
+.list-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 400;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+
+  padding-top: calc(110px + env(safe-area-inset-top));
+  padding-bottom: calc(110px + env(safe-area-inset-bottom));
+}
+
 .top-ui {
   position: absolute;
   left: 18px;
@@ -630,165 +669,8 @@ onBeforeUnmount(() => {
   color: #111827;
 }
 
-/* Bottom sheet */
-.sheet {
-  position: absolute;
-  left: 14px;
-  right: 14px;
-  bottom: calc(92px + env(safe-area-inset-bottom));
-  z-index: 600;
-  pointer-events: none;
-}
-
-.sheet-handle {
-  width: 52px;
-  height: 5px;
-  border-radius: 999px;
-  background: rgba(17, 24, 39, 0.14);
-  margin: 0 auto 10px auto;
-}
-
-.cards {
-  pointer-events: auto;
-  display: flex;
-  gap: 12px;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  scroll-snap-type: x mandatory;
-  padding-bottom: 6px;
-}
-
-.card {
-  flex: 0 0 min(340px, calc(100vw - 28px));
-  scroll-snap-align: start;
-  border: 1px solid rgba(17, 24, 39, 0.08);
-  background: rgba(255, 255, 255, 0.96);
-  border-radius: 18px;
-  box-shadow: 0 20px 55px rgba(0, 0, 0, 0.12);
-  padding: 14px 14px 12px 14px;
-  text-align: left;
-}
-
-.card-top {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.card-title {
-  display: flex;
-  gap: 6px;
-  align-items: baseline;
-  color: #111827;
-  font-weight: 800;
-}
-
-.rank {
-  color: rgba(17, 24, 39, 0.6);
-}
-
-.distance {
-  font-size: 12px;
-  color: rgba(17, 24, 39, 0.55);
-  display: inline-flex;
-  gap: 6px;
-  align-items: center;
-  white-space: nowrap;
-}
-
-.card-mid {
-  margin-top: 8px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 12px;
-}
-
-.stars {
-  color: #007bff;
-  letter-spacing: 0.12em;
-}
-
-.reviews {
-  color: #007bff;
-  font-weight: 700;
-}
-
-.tag-row {
-  margin-top: 10px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.tag {
-  font-size: 12px;
-  color: rgba(17, 24, 39, 0.65);
-  background: rgba(17, 24, 39, 0.06);
-  border: 1px solid rgba(17, 24, 39, 0.06);
-  border-radius: 999px;
-  padding: 6px 10px;
-}
-
-/* Bottom nav */
-.bottom-nav {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: calc(86px + env(safe-area-inset-bottom));
-  z-index: 650;
-  background: rgba(255, 255, 255, 0.92);
-  border-top: 1px solid rgba(17, 24, 39, 0.08);
-  display: grid;
-  grid-template-columns: 1fr 96px 1fr;
-  align-items: center;
-  padding: 0 18px calc(10px + env(safe-area-inset-bottom)) 18px;
-  backdrop-filter: blur(10px);
-}
-
-.nav-item {
-  border: 0;
-  background: transparent;
-  display: grid;
-  justify-items: center;
-  gap: 6px;
-  color: rgba(17, 24, 39, 0.65);
-  font-size: 12px;
-}
-
-.nav-fab {
-  width: 68px;
-  height: 68px;
-  border-radius: 999px;
-  border: 0;
-  background: #007bff;
-  color: white;
-  margin: -26px auto 0 auto;
-  box-shadow: 0 22px 50px rgba(47, 91, 255, 0.35);
-  position: relative;
-  display: grid;
-  place-items: center;
-}
-
-.fab-dot {
-  position: absolute;
-  right: 12px;
-  top: 12px;
-  width: 10px;
-  height: 10px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.95);
-}
-
-.cal-ic {
-  font-size: 18px;
-}
-
-/* Leaflet controls */
 :deep(.leaflet-control-container .leaflet-bottom.leaflet-right) {
-  margin-bottom: calc(110px + env(safe-area-inset-bottom));
+  margin-bottom: calc(var(--nav-bottom) + var(--nav-h) + 18px);
   margin-right: 14px;
 }
 
@@ -865,5 +747,13 @@ onBeforeUnmount(() => {
   padding: 6px 10px;
   border-radius: 999px;
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.12);
+}
+
+@media (min-width: 900px) {
+  .map-shell {
+    --nav-h: 68px;
+    --nav-gap: 18px;
+    --nav-bottom: 20px;
+  }
 }
 </style>
