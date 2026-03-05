@@ -105,6 +105,22 @@ def main():
         ("Escape Room MissionX", "Kultur", "Rätselstraße", "6", "Herford", "32052", 52.118, 8.671, "Gebühr",
          [("Donnerstag","16:00:00","22:00:00"),("Freitag","16:00:00","23:00:00"),("Samstag","12:00:00","23:00:00"),("Sonntag","12:00:00","20:00:00")],
          "Online buchen im Hinweis"),
+
+        ("Hermannsdenkmal", "Natur", "Grotenburg", "1", "Detmold", "32760", 51.895, 8.852, "Kostenlos",
+         [("Montag","00:00:00","23:59:00"),("Dienstag","00:00:00","23:59:00"),("Mittwoch","00:00:00","23:59:00"),("Donnerstag","00:00:00","23:59:00"),("Freitag","00:00:00","23:59:00"),("Samstag","00:00:00","23:59:00"),("Sonntag","00:00:00","23:59:00")],
+         "Außenbereich jederzeit zugänglich"),
+        ("Freilichtmuseum Detmold", "Kultur", "Krummes Haus", "1", "Detmold", "32760", 51.937, 8.879, "Gebühr",
+         [("Dienstag","09:00:00","18:00:00"),("Mittwoch","09:00:00","18:00:00"),("Donnerstag","09:00:00","18:00:00"),("Freitag","09:00:00","18:00:00"),("Samstag","09:00:00","18:00:00"),("Sonntag","09:00:00","18:00:00")],
+         "Kasse/Öffnungszeiten saisonal prüfen"),
+        ("Schlosspark Detmold", "Natur", "Schlossplatz", "1", "Detmold", "32756", 51.936, 8.880, "Kostenlos",
+         [("Montag","00:00:00","23:59:00"),("Dienstag","00:00:00","23:59:00"),("Mittwoch","00:00:00","23:59:00"),("Donnerstag","00:00:00","23:59:00"),("Freitag","00:00:00","23:59:00"),("Samstag","00:00:00","23:59:00"),("Sonntag","00:00:00","23:59:00")],
+         "Park frei zugänglich"),
+        ("Stadtbibliothek Detmold", "Bildung", "Leopoldstraße", "5", "Detmold", "32756", 51.936, 8.880, "Kostenlos",
+         [("Dienstag","10:00:00","18:00:00"),("Mittwoch","10:00:00","18:00:00"),("Donnerstag","10:00:00","18:00:00"),("Freitag","10:00:00","18:00:00"),("Samstag","10:00:00","14:00:00")],
+         "Ausweis vor Ort"),
+        ("LWL-Landesmuseum Detmold", "Kultur", "Ameide", "4", "Detmold", "32756", 51.934, 8.878, "Gebühr",
+         [("Dienstag","11:00:00","18:00:00"),("Mittwoch","11:00:00","18:00:00"),("Donnerstag","11:00:00","18:00:00"),("Freitag","11:00:00","18:00:00"),("Samstag","11:00:00","18:00:00"),("Sonntag","11:00:00","18:00:00")],
+         "Öffnungszeiten/Eintritt prüfen"),
     ]
 
     through = []
