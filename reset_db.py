@@ -13,6 +13,7 @@ def main():
             models.GeplanteAktivitaet,
             models.Favorit,
             models.Bewertung,
+            models.Benutzer,
 
             models.OeffnungszeitSlot,
             models.SerieWochentag,
