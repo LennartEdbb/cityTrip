@@ -121,7 +121,7 @@ defineEmits<{ (e: "tab", t: "home" | "favourites" | "settings"): void }>()
 .nav-item.active {
   color: #0b4dff;
   background: rgba(47, 91, 255, 0.12);
-  box-shadow: 0 10px 28px rgba(47, 91, 255, 0.22);
+  /* box-shadow: 0 10px 28px rgba(47, 91, 255, 0.22); */
 }
 
 .nav-item.active .nav-ic {
@@ -156,7 +156,7 @@ defineEmits<{ (e: "tab", t: "home" | "favourites" | "settings"): void }>()
 
   .nav-item.active {
     background: rgba(47, 91, 255, 0.10);
-    box-shadow: 0 8px 20px rgba(47, 91, 255, 0.18);
+    /* box-shadow: 0 8px 20px rgba(47, 91, 255, 0.18); */
   }
 
   .nav-item .nav-ic {

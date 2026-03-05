@@ -47,6 +47,7 @@
         v-else
         :venues="filteredVenues"
         :radius="radius"
+        @select="focusVenue"
       />
     </div>
 
@@ -191,7 +192,7 @@ let radiusCircle: L.Circle | null = null
 let venueMarkers = new Map<string, L.Marker>()
 
 const venues = ref<Venue[]>([])
-const viewMode = ref<'map' | 'list'>('map')
+const viewMode = ref<"map" | "list">("map")
 const radius = ref(10) // km
 
 const activeTab = ref<"home" | "favourites" | "settings">("home")
@@ -565,12 +566,10 @@ onMounted(async () => {
     maxZoom: 20,
   }).addTo(map)
 
-
   queueMicrotask(() => map?.invalidateSize())
   window.addEventListener("resize", handleResize, { passive: true })
 
   await loadVenuesAndMarkers()
-
 })
 
 onBeforeUnmount(() => {
@@ -748,6 +747,26 @@ onBeforeUnmount(() => {
   border-radius: 999px;
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.12);
 }
+
+.event-marker {
+  background: transparent;
+  border: none;
+}
+
+.event-marker__circle {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 3px solid white;
+  box-shadow: 0 6px 14px rgba(0,0,0,0.25);
+  margin: 6px;
+}
+
+.greeting-row { margin-top: 8px; display:flex; justify-content:center }
+.greeting { background: rgba(255,255,255,0.9); padding:6px 12px; border-radius:999px; font-weight:700; box-shadow:0 10px 30px rgba(0,0,0,0.08) }
+
+.logout-wrap { position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(var(--nav-bottom) + var(--nav-h) + 8px); z-index: 600 }
+.logout-btn { background: #fff; border: 1px solid rgba(17,24,39,0.08); padding:10px 16px; border-radius:999px; font-weight:700; box-shadow:0 12px 30px rgba(0,0,0,0.08) }
 
 @media (min-width: 900px) {
   .map-shell {
