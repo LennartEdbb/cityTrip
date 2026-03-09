@@ -44,11 +44,12 @@
         @select="focusVenue"
       />
       <VenueListView
-        v-else
+        v-else-if="activeTab === 'home'"
         :venues="filteredVenues"
         :radius="radius"
         @select="focusVenue"
       />
+      <SettingsView v-else-if="activeTab === 'settings'" />
     </div>
 
     <VenueCardsSheet
@@ -59,10 +60,10 @@
       @select="focusVenue"
     />
 
-    <!-- bottom nav -->
     <BottomNav
       :activeTab="activeTab"
       @tab="onTab"
+      @focus="centerOnUser(16)"
     />
 
     <OwnLocation @location-obtained="addUserMarker" />
@@ -80,7 +81,9 @@ import VenueListView from "./VenueListView.vue"
 import BottomNav from "./BottomNav.vue"
 import VenueCardsSheet from "./VenueCardsSheet.vue"
 import FavouritesView from "@/views/FavouritesView.vue"
+import SettingsView from "@/views/SettingsView.vue"
 import { useFavourites } from "@/store/favourites"
+import { useAuth } from "@/store/auth"
 
 type Venue = {
   id: string
@@ -98,6 +101,11 @@ type Venue = {
   lng?: number
   distanceM?: number
   distanceText?: string
+}
+
+function doLogout() {
+  auth.logout()
+  activeTab.value = "home"
 }
 
 type ZeitmodellEinmalig = {
@@ -198,6 +206,8 @@ const radius = ref(10) // km
 const activeTab = ref<"home" | "favourites" | "settings">("home")
 
 const { isFavourite, toggleFavourite } = useFavourites()
+const auth = useAuth()
+const currentUser = auth.currentUser
 
 const sortedVenues = computed(() => {
   const list = [...venues.value]
@@ -226,6 +236,7 @@ function onTab(t: "home" | "favourites" | "settings") {
   } else if (t === "home") {
     viewMode.value = "map"
   } else {
+    viewMode.value = "list"
   }
 }
 

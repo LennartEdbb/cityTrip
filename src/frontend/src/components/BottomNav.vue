@@ -1,8 +1,22 @@
 <template>
   <div class="bottom-nav">
+    <button
+      class="focus-btn"
+      type="button"
+      @click="$emit('focus')"
+      aria-label="Focus own location"
+      title="Focus"
+    >
+    <span class="material-icons">
+      gps_fixed
+    </span>
+    </button>
+
     <button class="nav-item" :class="{ active: activeTab === 'favourites' }" @click="$emit('tab', 'favourites')">
       <span class="nav-ic">
-        <img src="/icons/bookmark_heart.svg" alt="Favourites" class="icon-img" />
+        <span class="material-icons">
+        favorite
+        </span>
       </span>
       <span>Favourites</span>
     </button>
@@ -15,7 +29,11 @@
     </button>
 
     <button class="nav-item" :class="{ active: activeTab === 'settings' }" @click="$emit('tab', 'settings')">
-      <span class="nav-ic">⚙️</span>
+      <span class="nav-ic">
+        <span class="material-icons">
+        settings
+        </span>
+      </span>
       <span>Settings</span>
     </button>
   </div>
@@ -23,7 +41,11 @@
 
 <script setup lang="ts">
 defineProps<{ activeTab: "home" | "favourites" | "settings" }>()
-defineEmits<{ (e: "tab", t: "home" | "favourites" | "settings"): void }>()
+
+defineEmits<{
+  (e: "tab", t: "home" | "favourites" | "settings"): void
+  (e: "focus"): void
+}>()
 </script>
 
 <style scoped>
@@ -40,6 +62,7 @@ defineEmits<{ (e: "tab", t: "home" | "favourites" | "settings"): void }>()
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
   padding: 10px 12px;
 
   border-radius: 22px;
@@ -64,6 +87,37 @@ defineEmits<{ (e: "tab", t: "home" | "favourites" | "settings"): void }>()
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.55);
   pointer-events: none;
+}
+
+.focus-btn {
+  width: 42px;
+  min-width: 42px;
+  height: 42px;
+  border: none;
+  border-radius: 999px;
+  background: rgba(47, 91, 255, 0.1);
+  color: #0b4dff;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: transform 160ms ease, background 160ms ease, box-shadow 160ms ease;
+}
+
+.focus-btn:hover {
+  background: rgba(47, 91, 255, 0.16);
+}
+
+.focus-btn:active {
+  transform: scale(0.97);
+}
+
+.focus-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  background: #2f5bff;
+  border: 3px solid #ffffff;
+  box-shadow: 0 0 0 2px rgba(47, 91, 255, 0.18);
 }
 
 .nav-item {
@@ -121,7 +175,6 @@ defineEmits<{ (e: "tab", t: "home" | "favourites" | "settings"): void }>()
 .nav-item.active {
   color: #0b4dff;
   background: rgba(47, 91, 255, 0.12);
-  /* box-shadow: 0 10px 28px rgba(47, 91, 255, 0.22); */
 }
 
 .nav-item.active .nav-ic {
@@ -142,6 +195,12 @@ defineEmits<{ (e: "tab", t: "home" | "favourites" | "settings"): void }>()
       0 1px 0 rgba(255, 255, 255, 0.65) inset;
   }
 
+  .focus-btn {
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+  }
+
   .nav-item {
     flex-direction: row;
     gap: 10px;
@@ -156,7 +215,6 @@ defineEmits<{ (e: "tab", t: "home" | "favourites" | "settings"): void }>()
 
   .nav-item.active {
     background: rgba(47, 91, 255, 0.10);
-    /* box-shadow: 0 8px 20px rgba(47, 91, 255, 0.18); */
   }
 
   .nav-item .nav-ic {
