@@ -18,6 +18,38 @@ from app.models import (
 router = APIRouter()
 
 
+# ---------- Profile (personal info) ----------
+class ActivitySummary(BaseModel):
+    id: int
+    bezeichnung: str
+
+
+class ProfileOut(BaseModel):
+    name: str
+    favorites: List[ActivitySummary] = Field(default_factory=list)
+    my_activities: List[ActivitySummary] = Field(default_factory=list)
+
+
+@router.get("/profile", response_model=ProfileOut)
+def get_profile(
+        db: Session = Depends(get_db),
+        user: Benutzer = Depends(get_current_user),
+):
+    # Favorites -> join to Aktivitaet to return simple summary
+    favs = db.scalars(select(Favorit).where(Favorit.benutzer_id == user.id)).all()
+    favorite_acts: List[ActivitySummary] = []
+    for f in favs:
+        act = db.scalar(select(Aktivitaet).where(Aktivitaet.id == f.aktivitaet_id))
+        if act:
+            favorite_acts.append(ActivitySummary(id=act.id, bezeichnung=act.bezeichnung))
+
+    # Activities created by this user (anbieter)
+    my_acts = db.scalars(select(Aktivitaet).where(Aktivitaet.anbieter_id == user.id)).all()
+    my_activities = [ActivitySummary(id=a.id, bezeichnung=a.bezeichnung) for a in my_acts]
+
+    return ProfileOut(name=user.name, favorites=favorite_acts, my_activities=my_activities)
+
+
 # ---------- Schemas (lokal, damit es sofort läuft) ----------
 class FavoriteOut(BaseModel):
     id: int
