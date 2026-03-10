@@ -1,7 +1,21 @@
 <template>
   <div class="list-wrap">
     <div class="list-head">
-      <div class="list-title">Venues</div>
+      <div class="top-row">
+        <div class="spacer"></div>
+
+        <div class="title">Venues</div>
+
+        <button
+          class="icon-btn"
+          type="button"
+          @click="toggleView()"
+          aria-label="Toggle map/list view"
+        >
+          <span class="material-icons" style="color: #252525">map</span>
+        </button>
+      </div>
+
       <div class="list-sub">
         Showing {{ venues.length }} {{ venues.length === 1 ? "place" : "places" }}
         <span v-if="typeof radius === 'number'"> · Radius: {{ radius }}km</span>
@@ -49,32 +63,34 @@
 type Venue = {
   id: string
   label?: string
-
   name: string
   address: string
   tags?: string[]
-
   whenText?: string
   priceText?: string
   accessible?: boolean
-
   lat?: number
   lng?: number
   distanceM?: number
   distanceText?: string
 }
 
-const props = defineProps<{
+defineProps<{
   venues: Venue[]
   radius?: number
 }>()
 
 const emit = defineEmits<{
   (e: "select", v: Venue): void
+  (e: "toggle-view"): void
 }>()
 
 function onSelect(v: Venue) {
   emit("select", v)
+}
+
+function toggleView() {
+  emit("toggle-view")
 }
 </script>
 
@@ -87,18 +103,52 @@ function onSelect(v: Venue) {
   padding: 10px 6px 14px;
 }
 
-.list-title {
-  font-weight: 900;
-  letter-spacing: 0.08em;
-  font-size: 12px;
+.top-row {
+  display: grid;
+  grid-template-columns: 44px 1fr 44px;
+  align-items: center;
+  gap: 10px;
+}
+
+.title {
+  text-align: center;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  font-size: 13px;
   color: #111827;
   text-transform: uppercase;
 }
 
+.spacer {
+  width: 44px;
+  height: 44px;
+}
+
+.icon-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  border: 1px solid rgba(17, 24, 39, 0.08);
+  background: rgba(255, 255, 255, 0.92);
+  display: grid;
+  place-items: center;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.icon-btn span,
+.icon-btn svg {
+  width: 20px;
+  height: 20px;
+  color: #111827;
+}
+
 .list-sub {
-  margin-top: 6px;
+  margin-top: 8px;
   font-size: 12px;
   color: rgba(17, 24, 39, 0.6);
+  text-align: center;
 }
 
 .empty {
@@ -122,8 +172,9 @@ function onSelect(v: Venue) {
   border-radius: 16px;
   border: 1px solid rgba(17, 24, 39, 0.08);
   background: rgba(255, 255, 255, 0.92);
-  padding: 12px 12px;
+  padding: 12px;
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.08);
+  cursor: pointer;
 }
 
 .row {
