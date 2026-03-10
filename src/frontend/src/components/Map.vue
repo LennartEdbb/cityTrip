@@ -6,30 +6,8 @@
         <EventAddPanel />
         <div class="title">City Trip</div>
         <button class="icon-btn" type="button" @click="toggleViewMode">
-          <svg
-            v-if="viewMode === 'map'"
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-          >
-            <path d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-          </svg>
-          <svg
-            v-else
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-          >
-            <path
-              d="M3 7V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7M3 7l9 4 9-4"
-            />
-          </svg>
+          <span v-if="viewMode === 'map'" class="material-icons" style="color: #252525">density_small</span>
+          <span v-else class="material-icons" style="color: #252525">map</span>
         </button>
       </div>
       <RadiusFilter @radius-change="onRadiusChange" />
@@ -296,29 +274,72 @@ function updateDistances() {
   }
 }
 
-function createRedDotLabelIcon(label?: string) {
-  const safe = label ? escapeHtml(label) : ""
+function createRedDotLabelIcon(tags?: string[]) {
+  let color = "#ef4444" // default (red)
+
   return L.divIcon({
-    className: "event-marker",
+    className: "",
     html: `
-      <div class="event-marker__wrap">
-        <span class="event-marker__dot"></span>
-        ${safe ? `<span class="event-marker__label">${safe}</span>` : ``}
-      </div>
+      <div style="
+        width:12px;
+        height:12px;
+        border-radius:50%;
+        background:${color};
+        border:3px solid white;
+        box-shadow:0 6px 14px rgba(0,0,0,0.25);
+      "></div>
     `,
-    iconSize: [1, 1],
-    iconAnchor: [7, 7],
-    popupAnchor: [0, -12],
+    iconSize: [18,18],
+    iconAnchor: [9,9],
   })
 }
 
 function createPopupContent(v: Venue) {
   const extra = [v.whenText, v.priceText].filter(Boolean).join(" · ")
+
   return `
-    <div class="popup">
-      <div class="popup-title">${escapeHtml(v.name)}</div>
-      <div class="popup-sub">${escapeHtml(v.address)}</div>
-      ${extra ? `<div class="popup-sub">${escapeHtml(extra)}</div>` : ""}
+    <div style="
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      min-width:220px;
+      padding:6px 2px;
+    ">
+      
+      <div style="
+        font-weight:800;
+        font-size:14px;
+        color:#111827;
+        margin-bottom:4px;
+        line-height:1.3;
+      ">
+        ${escapeHtml(v.name)}
+      </div>
+
+      <div style="
+        font-size:12px;
+        color:#6b7280;
+        margin-bottom:6px;
+        line-height:1.4;
+      ">
+        📍 ${escapeHtml(v.address)}
+      </div>
+
+      ${
+        extra
+          ? `
+        <div style="
+          font-size:12px;
+          color:#374151;
+          background:#f3f4f6;
+          padding:6px 8px;
+          border-radius:8px;
+          font-weight:600;
+        ">
+          ${escapeHtml(extra)}
+        </div>
+      `
+          : ""
+      }
+
     </div>
   `
 }
