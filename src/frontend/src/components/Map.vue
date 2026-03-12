@@ -22,6 +22,7 @@
         @select="focusVenue"
         @toggle-view="toggleViewMode"
       />
+      <EventAddView v-else-if="activeTab === 'add-event'" />
       <SettingsView v-else-if="activeTab === 'settings'" />
     </div>
 
@@ -49,6 +50,7 @@ import L from "leaflet"
 import "leaflet/dist/leaflet.css"
 import OwnLocation from "./OwnLocation.vue"
 import EventAddPanel from "./EventAddPanel.vue"
+import EventAddView from "@/views/EventAddView.vue"
 import TopHeader from "./TopHeader.vue"
 import VenueListView from "./VenueListView.vue"
 import BottomNav from "./BottomNav.vue"
@@ -176,7 +178,7 @@ const venues = ref<Venue[]>([])
 const viewMode = ref<"map" | "list">("map")
 const radius = ref(10) // km
 
-const activeTab = ref<"home" | "favourites" | "settings">("home")
+const activeTab = ref<"home" | "favourites" | "settings" | "add-event">("home")
 
 const { isFavourite, toggleFavourite } = useFavourites()
 const auth = useAuth()
@@ -201,13 +203,16 @@ const listVenues = computed(() => {
   return activeTab.value === "favourites" ? favouriteVenues.value : filteredVenues.value
 })
 
-function onTab(t: "home" | "favourites" | "settings") {
+function onTab(t: "home" | "favourites" | "settings" | "add-event") {
   activeTab.value = t
 
   if (t === "favourites") {
     viewMode.value = "list"
   } else if (t === "home") {
     viewMode.value = "map"
+  } else if (t === "add-event") {
+    // Show add-event view in the list layer
+    viewMode.value = "list"
   } else {
     viewMode.value = "list"
   }

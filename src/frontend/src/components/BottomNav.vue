@@ -36,14 +36,22 @@
       </span>
       <span>Settings</span>
     </button>
+    <button class="nav-item" :class="{ active: activeTab === 'add-event' }" @click="$emit('tab', 'add-event')">
+      <span class="nav-ic">
+        <span class="material-icons">
+        add_circle
+        </span>
+      </span>
+      <span>Add Event</span>
+    </button>
   </div>
 </template>
 
 <script setup lang="ts">
-defineProps<{ activeTab: "home" | "favourites" | "settings" }>()
+defineProps<{ activeTab: "home" | "favourites" | "settings" | "add-event" }>()
 
 defineEmits<{
-  (e: "tab", t: "home" | "favourites" | "settings"): void
+  (e: "tab", t: "home" | "favourites" | "settings" | "add-event"): void
   (e: "focus"): void
 }>()
 </script>

@@ -9,7 +9,11 @@
 
   <div v-if="isPanelOpen" class="panel">
     <div class="panel-content">
-        <EventAdd />
+        
+
+      Empty space for cool content
+
+
       <button class="close-btn" @click="closePanel">Close</button>
     </div>
   </div>
@@ -17,7 +21,6 @@
 
 <script setup>
 import { ref } from 'vue'
-import EventAdd from "./EventAdd.vue";
 
 const isPanelOpen = ref(false)
 
