@@ -26,6 +26,8 @@ class ActivitySummary(BaseModel):
 
 class ProfileOut(BaseModel):
     name: str
+    rolle: str
+    email: str
     favorites: List[ActivitySummary] = Field(default_factory=list)
     my_activities: List[ActivitySummary] = Field(default_factory=list)
 
@@ -47,8 +49,7 @@ def get_profile(
     my_acts = db.scalars(select(Aktivitaet).where(Aktivitaet.anbieter_id == user.id)).all()
     my_activities = [ActivitySummary(id=a.id, bezeichnung=a.bezeichnung) for a in my_acts]
 
-    return ProfileOut(name=user.name, favorites=favorite_acts, my_activities=my_activities)
-
+    return ProfileOut(name=user.name, rolle=user.rolle, email=user.email, favorites=favorite_acts, my_activities=my_activities)
 
 # ---------- Schemas (lokal, damit es sofort läuft) ----------
 class FavoriteOut(BaseModel):
