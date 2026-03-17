@@ -3,8 +3,11 @@
     <TopHeader
       v-if="viewMode === 'map'"
       :viewMode="viewMode"
+      :canAdd="canAdd"
+      :showRoute="showRoute"
       @radius-change="onRadiusChange"
       @toggle-view="toggleViewMode"
+      @toggle-route="showRoute = !showRoute"
     />
 
     <div ref="mapEl" class="map" v-show="viewMode === 'map'" />
@@ -22,7 +25,10 @@
         @select="focusVenue"
         @toggle-view="toggleViewMode"
       />
-      <EventAddView v-else-if="activeTab === 'add-event'" />
+      <EventAddView
+        v-else-if="activeTab === 'add-event'"
+        :creator="currentUser ? { id: currentUser.id, email: currentUser.email, name: currentUser.name } : null"
+      />
       <SettingsView v-else-if="activeTab === 'settings'" />
     </div>
 
@@ -36,6 +42,7 @@
 
     <BottomNav
       :activeTab="activeTab"
+      :canAdd="canAdd"
       @tab="onTab"
       @focus="centerOnUser(16)"
     />
@@ -86,8 +93,8 @@ function doLogout() {
 type ZeitmodellEinmalig = {
   typ: "einmalig"
   id?: number
-  datum: string // YYYY-MM-DD
-  von?: string | null // HH:mm:ss
+  datum: string
+  von?: string | null
   bis?: string | null
   hinweis?: string | null
 }
@@ -95,20 +102,20 @@ type ZeitmodellEinmalig = {
 type ZeitmodellSerie = {
   typ: "serie"
   id?: number
-  gueltig_von: string // YYYY-MM-DD
-  gueltig_bis: string // YYYY-MM-DD
+  gueltig_von: string
+  gueltig_bis: string
   von?: string | null
   bis?: string | null
   intervall_wochen?: number | null
-  wochentage?: string[] | null // ["Montag", ...]
+  wochentage?: string[] | null
   hinweis?: string | null
 }
 
 type ZeitmodellSlot = {
   id?: number
-  wochentag: string // "Montag" ...
-  uhrzeit_von: string // HH:mm:ss
-  uhrzeit_bis: string // HH:mm:ss
+  wochentag: string
+  uhrzeit_von: string
+  uhrzeit_bis: string
 }
 
 type ZeitmodellDurchgaengig = {
@@ -149,7 +156,7 @@ type ApiEvent = {
   zeitmodell: ApiZeitmodell
   eintritt: {
     id?: number
-    kostenmodell: string // Kostenlos | Gebühr | ...
+    kostenmodell: string
     hinweis?: string | null
     tarife?: Array<{
       bezeichnung: string
@@ -176,13 +183,23 @@ let venueMarkers = new Map<string, L.Marker>()
 
 const venues = ref<Venue[]>([])
 const viewMode = ref<"map" | "list">("map")
-const radius = ref(10) // km
+const radius = ref(10)
 
 const activeTab = ref<"home" | "favourites" | "settings" | "add-event">("home")
 
 const { isFavourite, toggleFavourite } = useFavourites()
 const auth = useAuth()
 const currentUser = auth.currentUser
+
+const canAdd = computed(() => {
+  try {
+    return String(currentUser.value?.rolle ?? "").toLowerCase() === "anbieter"
+  } catch {
+    return false
+  }
+})
+
+const showRoute = ref(true)
 
 const sortedVenues = computed(() => {
   const list = [...venues.value]
@@ -211,7 +228,6 @@ function onTab(t: "home" | "favourites" | "settings" | "add-event") {
   } else if (t === "home") {
     viewMode.value = "map"
   } else if (t === "add-event") {
-    // Show add-event view in the list layer
     viewMode.value = "list"
   } else {
     viewMode.value = "list"
@@ -254,6 +270,7 @@ function haversineMeters(a: L.LatLng, b: L.LatLng) {
   const s =
     Math.sin(dLat / 2) ** 2 +
     Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2
+
   return 2 * R * Math.atan2(Math.sqrt(s), Math.sqrt(1 - s))
 }
 
@@ -275,7 +292,7 @@ function updateDistances() {
 }
 
 function createRedDotLabelIcon(tags?: string[]) {
-  let color = "#ef4444" // default (red)
+  let color = "#ef4444"
 
   return L.divIcon({
     className: "",
@@ -289,8 +306,8 @@ function createRedDotLabelIcon(tags?: string[]) {
         box-shadow:0 6px 14px rgba(0,0,0,0.25);
       "></div>
     `,
-    iconSize: [18,18],
-    iconAnchor: [9,9],
+    iconSize: [18, 18],
+    iconAnchor: [9, 9],
   })
 }
 
@@ -303,7 +320,6 @@ function createPopupContent(v: Venue) {
       min-width:220px;
       padding:6px 2px;
     ">
-      
       <div style="
         font-weight:800;
         font-size:14px;
@@ -339,16 +355,29 @@ function createPopupContent(v: Venue) {
       `
           : ""
       }
-
     </div>
   `
 }
 
+function clearRoute() {
+  if (!map || !routeLine) return
+  try {
+    map.removeLayer(routeLine)
+  } catch {}
+  routeLine = null
+}
+
 function drawRoute(from: L.LatLng, to: L.LatLng) {
   if (!map) return
-  if (routeLine) map.removeLayer(routeLine)
 
-  const mid = L.latLng((from.lat + to.lat) / 2 + 0.0006, (from.lng + to.lng) / 2 - 0.001)
+  clearRoute()
+
+  if (!showRoute.value) return
+
+  const mid = L.latLng(
+    (from.lat + to.lat) / 2 + 0.0006,
+    (from.lng + to.lng) / 2 - 0.001
+  )
 
   routeLine = L.polyline([from, mid, to], {
     color: "#2f5bff",
@@ -371,12 +400,22 @@ function focusVenue(v: Venue) {
   const marker = venueMarkers.get(v.id)
   marker?.openPopup()
 
-  if (userLatLng) drawRoute(userLatLng, latlng)
+  if (userLatLng && showRoute.value) {
+    drawRoute(userLatLng, latlng)
+  }
 }
+
+watch(showRoute, (val) => {
+  if (!val) {
+    clearRoute()
+  }
+})
 
 function clearVenueMarkers() {
   if (!map) return
-  for (const [, marker] of venueMarkers) map.removeLayer(marker)
+  for (const [, marker] of venueMarkers) {
+    map.removeLayer(marker)
+  }
   venueMarkers.clear()
 }
 
@@ -400,13 +439,29 @@ function updateMarkers() {
 
   for (const v of filteredVenues.value) {
     if (typeof v.lat !== "number" || typeof v.lng !== "number") continue
+
     const coords = L.latLng(v.lat, v.lng)
     const marker = L.marker(coords, { icon: createRedDotLabelIcon(v.label) })
-    marker.bindPopup(createPopupContent(v), { className: "clean-popup", closeButton: false })
+
+    marker.bindPopup(createPopupContent(v), {
+      className: "clean-popup",
+      closeButton: false,
+    })
+
+    marker.on("click", (e) => {
+      L.DomEvent.stopPropagation(e)
+      marker.openPopup()
+
+      if (userLatLng && showRoute.value) {
+        drawRoute(userLatLng, coords)
+      }
+    })
+
     marker.addTo(map)
     venueMarkers.set(v.id, marker)
     bounds.extend(coords)
   }
+
   if (!userLatLng && bounds.isValid()) {
     map.fitBounds(bounds, { padding: [60, 180], maxZoom: 16 })
   }
@@ -448,7 +503,6 @@ function fmtWhen(z: ApiZeitmodell) {
     return parts.join(" · ")
   }
 
-  // durchgaengig
   const slots = (z.slots ?? []).filter(Boolean)
   if (!slots.length) return "Öffnungszeiten"
 
@@ -598,15 +652,23 @@ onMounted(async () => {
     maxZoom: 20,
   }).addTo(map)
 
+  map.on("click", () => {
+    clearRoute()
+  })
+
   queueMicrotask(() => map?.invalidateSize())
   window.addEventListener("resize", handleResize, { passive: true })
 
   await loadVenuesAndMarkers()
+  auth.fetchProfile().catch(() => {})
 })
 
 onBeforeUnmount(() => {
   window.removeEventListener("resize", handleResize)
+
   if (map) {
+    map.off("click")
+    clearRoute()
     clearVenueMarkers()
     map.remove()
     map = null

@@ -118,7 +118,6 @@
 
           <select v-model="event.zeitmodell.typ">
             <option value="einmalig">Einmalig</option>
-            <option value="dauerhaft">Dauerhaft</option>
           </select>
 
           <input v-model="event.zeitmodell.datum" type="date" />
@@ -134,13 +133,15 @@
             placeholder="Hinweis zur Zeit"
           />
         </section>
-
         <section class="form-section">
           <h2>Eintritt</h2>
 
           <select v-model="event.eintritt.kostenmodell">
             <option value="Kostenlos">Kostenlos</option>
-            <option value="Kostenpflichtig">Kostenpflichtig</option>
+            <option value="Gebühr">Gebühr</option>
+            <option value="Spende">Spende</option>
+            <option value="Konsum">Konsum</option>
+            <option value="Mitgliedschaft">Mitgliedschaft</option>
           </select>
 
           <input
@@ -150,9 +151,46 @@
           />
 
           <div
-            v-if="event.eintritt.kostenmodell === 'Kostenpflichtig'"
+            v-if="event.eintritt.kostenmodell !== 'Kostenlos' && event.eintritt.tarife.length > 0"
             class="tarif-box"
           >
+            <input
+              v-model="event.eintritt.tarife[0].bezeichnung"
+              type="text"
+              placeholder="Tarifbezeichnung"
+            />
+
+            <div class="grid-2">
+              <select v-model="event.eintritt.tarife[0].dauer_typ">
+                <option value="Stunde">Stunde</option>
+                <option value="Tag">Tag</option>
+                <option value="Woche">Woche</option>
+                <option value="Monat">Monat</option>
+              </select>
+
+              <input
+                v-model.number="event.eintritt.tarife[0].dauer_wert"
+                type="number"
+                min="1"
+                placeholder="Dauerwert"
+              />
+            </div>
+
+            <div class="grid-2">
+              <input
+                v-model.number="event.eintritt.tarife[0].preis"
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="Preis"
+              />
+
+              <input
+                v-model="event.eintritt.tarife[0].kriterium"
+                type="text"
+                placeholder="Kriterium"
+              />
+            </div>
           </div>
         </section>
 
@@ -165,6 +203,9 @@
             {{ isSubmitting ? "Speichert..." : "Event hinzufügen" }}
           </button>
         </div>
+
+        <p v-if="errorMessage" class="error-text">{{ errorMessage }}</p>
+        <p v-if="successMessage" class="success-text">{{ successMessage }}</p>
       </form>
     </div>
   </section>
@@ -172,6 +213,8 @@
 
 <script setup lang="ts">
 import { ref, watch } from "vue"
+import { useRouter } from "vue-router"
+import { useAuth } from "@/store/auth"
 
 type Tarif = {
   bezeichnung: string
@@ -200,20 +243,33 @@ type ActivityPayload = {
       plz: string
       land: string
     }
-    lat: number
-    lon: number
+    lat: number | null
+    lon: number | null
   }
   zeitmodell: {
-    typ: "einmalig" | "dauerhaft"
+    typ: "einmalig"
     datum: string
     von: string
     bis: string
     hinweis: string
   }
-  eintritt: {
-    kostenmodell: "Kostenlos" | "Kostenpflichtig"
-    hinweis: string
-    tarife: Tarif[]
+  eintritt: Eintritt
+}
+
+type Eintritt = {
+  kostenmodell: "Kostenlos" | "Gebühr" | "Spende" | "Konsum" | "Mitgliedschaft"
+  hinweis: string
+  tarife: Tarif[]
+}
+
+function createEmptyTarif(): Tarif {
+  return {
+    bezeichnung: "",
+    dauer_typ: "Stunde",
+    dauer_wert: 1,
+    preis: 0,
+    kriterium: "",
+    waehrung: "Euro"
   }
 }
 
@@ -236,8 +292,8 @@ function createEmptyEvent(): ActivityPayload {
         plz: "",
         land: "Deutschland"
       },
-      lat: 0,
-      lon: 0
+      lat: null,
+      lon: null
     },
     zeitmodell: {
       typ: "einmalig",
@@ -254,9 +310,14 @@ function createEmptyEvent(): ActivityPayload {
   }
 }
 
+const router = useRouter()
+const auth = useAuth()
+
 const event = ref<ActivityPayload>(createEmptyEvent())
 const selectedCategory = ref("")
 const isSubmitting = ref(false)
+const errorMessage = ref("")
+const successMessage = ref("")
 
 watch(selectedCategory, (value) => {
   event.value.kategorien = value ? [value] : []
@@ -268,16 +329,7 @@ watch(
     if (value === "Kostenlos") {
       event.value.eintritt.tarife = []
     } else if (event.value.eintritt.tarife.length === 0) {
-      event.value.eintritt.tarife = [
-        {
-          bezeichnung: "",
-          dauer_typ: "Stunde",
-          dauer_wert: 1,
-          preis: 0,
-          kriterium: "",
-          waehrung: "Euro"
-        }
-      ]
+      event.value.eintritt.tarife = [createEmptyTarif()]
     }
   },
   { immediate: true }
@@ -316,7 +368,7 @@ function fillTestData() {
       hinweis: "Einlass ab 18:30"
     },
     eintritt: {
-      kostenmodell: "Kostenpflichtig",
+      kostenmodell: "Gebühr",
       hinweis: "Tickets online erhältlich",
       tarife: [
         {
@@ -332,13 +384,46 @@ function fillTestData() {
   }
 }
 
-function toIsoTime(date: string, time: string) {
-  if (!date || !time) return ""
-  return new Date(`${date}T${time}:00`).toISOString()
+function normalizeTime(value: string) {
+  if (!value) return ""
+  return value.length === 5 ? `${value}:00` : value
+}
+
+function getUserIdFromToken(token: string | null): number | null {
+  if (!token) return null
+
+  try {
+    const base64Url = token.split(".")[1]
+    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/")
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split("")
+        .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+        .join("")
+    )
+
+    const payload = JSON.parse(jsonPayload)
+    return payload?.sub ? Number(payload.sub) : null
+  } catch {
+    return null
+  }
 }
 
 async function addEvent() {
   if (isSubmitting.value) return
+
+  errorMessage.value = ""
+  successMessage.value = ""
+
+  const token = auth.token.value
+
+  console.log("auth token:", token)
+
+  if (!token) {
+    errorMessage.value = "Nicht eingeloggt. Bitte zuerst einloggen."
+    router.push({ name: "Login" })
+    return
+  }
 
   const required =
     event.value.bezeichnung &&
@@ -354,11 +439,14 @@ async function addEvent() {
     event.value.kategorien.length > 0
 
   if (!required) {
-    alert("Bitte alle Pflichtfelder ausfüllen")
+    errorMessage.value = "Bitte alle Pflichtfelder ausfüllen."
     return
   }
 
+  const userId = getUserIdFromToken(token)
+
   const payload = {
+    user_id: userId,
     bezeichnung: event.value.bezeichnung,
     beschreibung: event.value.beschreibung,
     bemerkung: event.value.bemerkung,
@@ -376,54 +464,65 @@ async function addEvent() {
         plz: event.value.location.anschrift.plz,
         land: event.value.location.anschrift.land
       },
-      lat: Number(event.value.location.lat),
-      lon: Number(event.value.location.lon)
+      lat: event.value.location.lat,
+      lon: event.value.location.lon
     },
     zeitmodell: {
-      typ: event.value.zeitmodell.typ,
+      typ: "einmalig",
       datum: event.value.zeitmodell.datum,
-      von: toIsoTime(event.value.zeitmodell.datum, event.value.zeitmodell.von),
-      bis: toIsoTime(event.value.zeitmodell.datum, event.value.zeitmodell.bis),
+      von: normalizeTime(event.value.zeitmodell.von),
+      bis: normalizeTime(event.value.zeitmodell.bis),
       hinweis: event.value.zeitmodell.hinweis
     },
     eintritt: {
       kostenmodell: event.value.eintritt.kostenmodell,
       hinweis: event.value.eintritt.hinweis,
       tarife:
-        event.value.eintritt.kostenmodell === "Kostenpflichtig"
+        event.value.eintritt.kostenmodell !== "Kostenlos"
           ? event.value.eintritt.tarife
           : []
     }
   }
 
+  console.log("POST /activities payload:", payload)
+
   try {
     isSubmitting.value = true
-    console.log("POST /activities payload:", payload)
 
-    const response = await fetch("http://localhost:8000/activities", {
+    const response = await fetch("http://127.0.0.1:8000/activities", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Accept: "application/json"
+        Accept: "application/json",
+        Authorization: `Bearer ${token}`
       },
       body: JSON.stringify(payload)
     })
 
     if (!response.ok) {
-      const errorText = await response.text()
-      console.error("Backend error:", errorText)
-      throw new Error(errorText || "Failed to save event")
+      let message = "Fehler beim Speichern"
+
+      try {
+        const errorJson = await response.json()
+        message = errorJson?.detail
+          ? JSON.stringify(errorJson.detail)
+          : JSON.stringify(errorJson)
+      } catch {
+        message = await response.text()
+      }
+
+      throw new Error(message)
     }
 
     const result = await response.json()
     console.log("Event saved:", result)
-    alert("Event erfolgreich hinzugefügt!")
 
+    successMessage.value = "Event erfolgreich hinzugefügt!"
     event.value = createEmptyEvent()
     selectedCategory.value = ""
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error adding event:", error)
-    alert("Fehler beim Speichern des Events")
+    errorMessage.value = error?.message ?? "Unbekannter Fehler"
   } finally {
     isSubmitting.value = false
   }

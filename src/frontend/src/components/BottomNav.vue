@@ -36,19 +36,19 @@
       </span>
       <span>Settings</span>
     </button>
-    <button class="nav-item" :class="{ active: activeTab === 'add-event' }" @click="$emit('tab', 'add-event')">
-      <span class="nav-ic">
-        <span class="material-icons">
-        add_circle
+      <button v-if="canAdd" class="nav-item" :class="{ active: activeTab === 'add-event' }" @click="$emit('tab', 'add-event')">
+        <span class="nav-ic">
+          <span class="material-icons">
+          add_circle
+          </span>
         </span>
-      </span>
-      <span>Add Event</span>
-    </button>
+        <span>Add Event</span>
+      </button>
   </div>
 </template>
 
 <script setup lang="ts">
-defineProps<{ activeTab: "home" | "favourites" | "settings" | "add-event" }>()
+  defineProps<{ activeTab: "home" | "favourites" | "settings" | "add-event"; canAdd?: boolean }>()
 
 defineEmits<{
   (e: "tab", t: "home" | "favourites" | "settings" | "add-event"): void

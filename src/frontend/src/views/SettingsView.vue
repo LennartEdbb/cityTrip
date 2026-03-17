@@ -5,7 +5,7 @@
         <p class="settings-eyebrow">Account</p>
         <h1 class="settings-title">Settings & Profile</h1>
         <p v-if="token" class="settings-sub">
-          Logged in as <strong>{{ currentUser?.email || "—" }}</strong>
+          Logged in as <strong>{{ currentUser?.name || "—" }}</strong>
         </p>
         <p v-else class="settings-sub">Manage your profile and account access.</p>
       </div>
@@ -53,25 +53,27 @@
           <div class="form-grid">
             <div class="field">
               <label for="name">Name</label>
-              <input id="name" v-model="local.name" placeholder="Your name" />
+              <input id="name" v-model="local.name" placeholder="Your name" readonly/>
             </div>
 
-            <!--
             <div class="field">
               <label for="email">Email</label>
-              <input id="email" v-model="local.email" placeholder="name@example.com" />
+              <input id="email" v-model="local.email" placeholder="name@example.com" readonly />
             </div>
 
             <div class="field">
               <label for="rolle">Role</label>
-              <input id="rolle" v-model="local.rolle" placeholder="Your role" />
+              <input id="rolle" :value="local.rolle || '-'" readonly />
             </div>
-            -->
+
+            <div class="field">
+              <label>User ID</label>
+              <div class="muted">{{ currentUser?.id ?? '-' }}</div>
+            </div>
           </div>
 
           <div class="actions">
-            <button class="primary-btn" type="button" @click="save">Save changes</button>
-            <button class="secondary-btn" type="button" @click="doLogout">Logout</button>
+            <button class="primary-btn" type="button" @click="doLogout">Logout</button>
           </div>
 
           <div v-if="msg" class="msg">{{ msg }}</div>
@@ -101,10 +103,6 @@ watch(
       local.name = u.name ?? ""
       local.email = u.email ?? ""
       local.rolle = (u as any).rolle ?? ""
-    } else {
-      local.name = ""
-      local.email = ""
-      local.rolle = ""
     }
   },
   { immediate: true }
@@ -117,7 +115,6 @@ async function save() {
     const res = await auth.updateProfile({
       name: local.name,
       email: local.email,
-      rolle: local.rolle,
     })
 
     msg.value = res ? "Saved to server" : "Saved locally"
@@ -153,6 +150,12 @@ function doLogout() {
       transparent 52%
     ),
     linear-gradient(180deg, #f8fbff 0%, #ffffff 240px);
+}
+
+input[readonly] {
+  background: #f9fafb;
+  color: rgba(17, 24, 39, 0.72);
+  cursor: default;
 }
 
 .settings-head {

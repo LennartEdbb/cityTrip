@@ -1,13 +1,20 @@
 <template>
   <div class="top-ui">
     <div class="top-row">
-      <EventAddPanel />
-      <div class="title">City Trip</div>
-      <button class="icon-btn" type="button" @click="$emit('toggle-view')">
-        <span v-if="viewMode === 'map'" class="material-icons" style="color: #252525">density_small</span>
-        <span v-else class="material-icons" style="color: #252525">map</span>
-      </button>
-    </div>
+        <div class="left-slot">
+          <EventAddPanel v-if="canAdd" />
+          <div v-else class="spacer"></div>
+        </div>
+
+        <div class="title">City Trip</div>
+
+        <div class="right-slot">
+          <button class="icon-btn" type="button" @click="$emit('toggle-view')" title="Karte/Listansicht">
+            <span v-if="viewMode === 'map'" class="material-icons" style="color: #252525">density_small</span>
+            <span v-else class="material-icons" style="color: #252525">map</span>
+          </button>
+        </div>
+      </div>
 
     <RadiusFilter @radius-change="$emit('radius-change', $event)" />
   </div>
@@ -18,7 +25,7 @@ import EventAddPanel from "./EventAddPanel.vue"
 import RadiusFilter from "./RadiusFilter.vue"
 import { defineProps } from "vue"
 
-defineProps<{ viewMode: 'map' | 'list' }>()
+defineProps<{ viewMode: 'map' | 'list'; canAdd?: boolean; showRoute?: boolean }>()
 </script>
 
 <style scoped>
@@ -32,10 +39,12 @@ defineProps<{ viewMode: 'map' | 'list' }>()
 
 .top-row {
   display: grid;
-  grid-template-columns: 44px 1fr 44px;
+  grid-template-columns: 88px 1fr 88px;
   align-items: center;
   gap: 10px;
 }
+
+.left-slot, .right-slot { display: flex; align-items: center; justify-content: center; gap: 8px }
 
 .title {
   text-align: center;

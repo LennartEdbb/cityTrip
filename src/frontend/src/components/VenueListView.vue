@@ -16,10 +16,19 @@
         </button>
       </div>
 
-      <div class="list-sub">
-        Showing {{ venues.length }} {{ venues.length === 1 ? "place" : "places" }}
-        <span v-if="typeof radius === 'number'"> · Radius: {{ radius }}km</span>
-      </div>
+        <div class="filters">
+          <input class="filter-input" placeholder="Suchen..." v-model="q" />
+          <label class="filter-check"><input type="checkbox" v-model="accessibleOnly" /> Barrierefrei</label>
+          <select v-model="selectedTag">
+            <option value="">Alle Kategorien</option>
+            <option v-for="t in tags" :key="t" :value="t">{{ t }}</option>
+          </select>
+        </div>
+
+        <div class="list-sub">
+          Showing {{ filtered.length }} of {{ venues.length }}
+          <span v-if="typeof radius === 'number'"> · Radius: {{ radius }}km</span>
+        </div>
     </div>
 
     <div v-if="!venues?.length" class="empty">
@@ -28,7 +37,7 @@
 
     <div v-else class="cards">
       <button
-        v-for="v in venues"
+        v-for="v in filtered"
         :key="v.id"
         class="card"
         type="button"
@@ -75,7 +84,8 @@ type Venue = {
   distanceText?: string
 }
 
-defineProps<{
+
+const props = defineProps<{
   venues: Venue[]
   radius?: number
 }>()
@@ -92,9 +102,53 @@ function onSelect(v: Venue) {
 function toggleView() {
   emit("toggle-view")
 }
+
+import { ref, computed } from 'vue'
+
+const q = ref("")
+const accessibleOnly = ref(false)
+const selectedTag = ref("")
+
+const tags = computed(() => {
+  const s: string[] = []
+  for (const v of props.venues || []) {
+    for (const t of v.tags || []) if (t && !s.includes(t)) s.push(t)
+  }
+  return s.sort()
+})
+
+const filtered = computed(() => {
+  let list = props.venues ?? []
+  if (q.value) {
+    const qq = q.value.toLowerCase()
+    list = list.filter((v) => (v.name + ' ' + v.address + ' ' + (v.tags || []).join(' ')).toLowerCase().includes(qq))
+  }
+  if (accessibleOnly.value) list = list.filter((v) => !!v.accessible)
+  if (selectedTag.value) list = list.filter((v) => (v.tags || []).includes(selectedTag.value))
+  return list
+})
 </script>
 
 <style scoped>
+.filters {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 8px;
+}
+
+.filter-input {
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid #dbe3ee;
+}
+
+.filter-check {
+  font-size: 13px;
+  color: #334155;
+}
+
 .list-wrap {
   padding: 14px 14px 24px;
 }
