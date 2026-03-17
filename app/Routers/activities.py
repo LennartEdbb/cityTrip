@@ -714,10 +714,14 @@ def create_activity(
         db: Session = Depends(get_db),
         user: Benutzer = Depends(require_roles("Anbieter", "Admin")),
 ):
-    # Location auswählen oder neu anlegen
+    # Genau eins von beiden: bestehende Location referenzieren ODER neue Location anlegen
     if (data.location_id is None) == (data.location is None):
-        raise HTTPException(status_code=400, detail="Entweder location_id oder location angeben (genau eins).")
+        raise HTTPException(
+            status_code=400,
+            detail="Entweder location_id oder location angeben (genau eins)."
+        )
 
+    # ---------- Location ----------
     if data.location_id is not None:
         loc = db.scalar(
             select(Location)
@@ -728,6 +732,7 @@ def create_activity(
             raise HTTPException(status_code=404, detail="Location nicht gefunden")
     else:
         a = data.location.anschrift
+
         anschrift = Anschrift(
             strasse=a.strasse,
             hausnummer=a.hausnummer,
@@ -763,27 +768,40 @@ def create_activity(
 
     # Kategorien
     for cat in data.kategorien:
-        db.add(AktivitaetKategorie(aktivitaet_id=act.id, kategorie=cat.value))
+        value = cat.value if hasattr(cat, "value") else cat
+        db.add(AktivitaetKategorie(
+            aktivitaet_id=act.id,
+            kategorie=value
+        ))
 
     # Eintritt + Tarife
     if data.eintritt is not None:
+        kostenmodell = (
+            data.eintritt.kostenmodell.value
+            if hasattr(data.eintritt.kostenmodell, "value")
+            else data.eintritt.kostenmodell
+        )
+
         ein = Eintritt(
             aktivitaet_id=act.id,
-            kostenmodell=data.eintritt.kostenmodell.value,
+            kostenmodell=kostenmodell,
             hinweis=data.eintritt.hinweis,
         )
         db.add(ein)
         db.flush()
 
         for t in data.eintritt.tarife:
+            dauer_typ = t.dauer_typ.value if hasattr(t.dauer_typ, "value") else t.dauer_typ
+            waehrung = t.waehrung.value if hasattr(t.waehrung, "value") else t.waehrung
+
             db.add(Tarif(
                 eintritt_id=ein.id,
                 bezeichnung=t.bezeichnung,
-                dauer_typ=t.dauer_typ.value,
+                dauer_typ=dauer_typ,
                 dauer_wert=t.dauer_wert,
                 preis=t.preis,
                 kriterium=t.kriterium,
-                waehrung=t.waehrung.value,
+                waehrung=waehrung,
             ))
 
     # Zeitmodell (genau eins)
@@ -811,9 +829,13 @@ def create_activity(
         db.flush()
 
         for wd in zm_in.wochentage:
-            db.add(SerieWochentag(serie_id=zm.id, wochentag=wd.value))
+            value = wd.value if hasattr(wd, "value") else wd
+            db.add(SerieWochentag(
+                serie_id=zm.id,
+                wochentag=value
+            ))
 
-    else:  # durchgaengig
+    elif zm_in.typ == "durchgaengig":
         zm = Durchgaengig(
             aktivitaet_id=act.id,
             hinweis=zm_in.hinweis,
@@ -824,12 +846,15 @@ def create_activity(
         db.flush()
 
         for s in zm_in.slots:
+            wd_value = s.wochentag.value if hasattr(s.wochentag, "value") else s.wochentag
             db.add(OeffnungszeitSlot(
                 durchgaengig_id=zm.id,
-                wochentag=s.wochentag.value,
+                wochentag=wd_value,
                 uhrzeit_von=s.uhrzeit_von,
                 uhrzeit_bis=s.uhrzeit_bis,
             ))
+    else:
+        raise HTTPException(status_code=400, detail="Ungültiger Zeitmodell-Typ")
 
     db.commit()
     act2 = load_activity(db, act.id)
