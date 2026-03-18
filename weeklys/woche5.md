@@ -1,5 +1,5 @@
-**Woche 5**
-**Weekly Bericht**
+# Woche 5
+### Weekly Bericht
 
 In dieser Woche habe ich eine Login- und Registrierungsfunktion erstellt, damit Nutzer sich einen Account anlegen und anmelden können. Dadurch ist es jetzt auch möglich, Favoriten den einzelnen Konten zuzuordnen und dauerhaft zu speichern.
 Außerdem habe ich einige Änderungen am Design vorgenommen, damit die Oberfläche übersichtlicher und benutzerfreundlicher wird. Zusätzlich konnte ich einen Bug auf der View-Page beheben, der zuvor zu Problemen bei der Anzeige geführt hat.
