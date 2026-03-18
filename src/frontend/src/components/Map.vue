@@ -5,6 +5,8 @@
       :viewMode="viewMode"
       :canAdd="canAdd"
       :showRoute="showRoute"
+      :venues="venues"
+      :currentUser="currentUser"
       @radius-change="onRadiusChange"
       @toggle-view="toggleViewMode"
       @toggle-route="showRoute = !showRoute"
@@ -29,7 +31,11 @@
         v-else-if="activeTab === 'add-event'"
         :creator="currentUser ? { id: currentUser.id, email: currentUser.email, name: currentUser.name } : null"
       />
-      <SettingsView v-else-if="activeTab === 'settings'" />
+      <SettingsView
+        v-else-if="activeTab === 'settings'"
+        :events="venues"
+        @event-deleted="onEventDeleted"
+      />
     </div>
 
     <VenueCardsSheet
@@ -56,7 +62,6 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue"
 import L from "leaflet"
 import "leaflet/dist/leaflet.css"
 import OwnLocation from "./OwnLocation.vue"
-import EventAddPanel from "./EventAddPanel.vue"
 import EventAddView from "@/views/EventAddView.vue"
 import TopHeader from "./TopHeader.vue"
 import VenueListView from "./VenueListView.vue"
@@ -83,6 +88,9 @@ type Venue = {
   lng?: number
   distanceM?: number
   distanceText?: string
+
+  creatorId?: number | string
+  creatorName?: string
 }
 
 function doLogout() {
@@ -137,6 +145,9 @@ type ApiEvent = {
   barrierefrei: boolean
   aktiv: boolean
   kategorien: string[]
+  anbieter?: string | null
+  anbieterID?: number
+  creator_id?: number
   location: {
     id: number
     bezeichnung: string
@@ -153,7 +164,9 @@ type ApiEvent = {
       id?: number
     }
   }
+
   zeitmodell: ApiZeitmodell
+
   eintritt: {
     id?: number
     kostenmodell: string
@@ -179,7 +192,7 @@ let userMarker: L.CircleMarker | null = null
 let accuracyHalo: L.Circle | null = null
 let radiusCircle: L.Circle | null = null
 
-let venueMarkers = new Map<string, L.Marker>()
+const venueMarkers = new Map<string, L.Marker>()
 
 const venues = ref<Venue[]>([])
 const viewMode = ref<"map" | "list">("map")
@@ -227,8 +240,6 @@ function onTab(t: "home" | "favourites" | "settings" | "add-event") {
     viewMode.value = "list"
   } else if (t === "home") {
     viewMode.value = "map"
-  } else if (t === "add-event") {
-    viewMode.value = "list"
   } else {
     viewMode.value = "list"
   }
@@ -245,6 +256,11 @@ watch(viewMode, async (mode) => {
     updateMarkers()
   }
 })
+
+function onEventDeleted(id: string) {
+  venues.value = venues.value.filter((v) => v.id !== id)
+  updateMarkers()
+}
 
 function escapeHtml(s: string) {
   return String(s).replace(/[&<>"']/g, (c) => {
@@ -291,8 +307,8 @@ function updateDistances() {
   }
 }
 
-function createRedDotLabelIcon(tags?: string[]) {
-  let color = "#ef4444"
+function createRedDotLabelIcon() {
+  const color = "#ef4444"
 
   return L.divIcon({
     className: "",
@@ -338,6 +354,21 @@ function createPopupContent(v: Venue) {
       ">
         📍 ${escapeHtml(v.address)}
       </div>
+
+      ${
+        v.creatorName
+          ? `
+        <div style="
+          font-size:12px;
+          color:#4b5563;
+          margin-bottom:6px;
+          line-height:1.4;
+        ">
+          👤 Erstellt von: ${escapeHtml(v.creatorName)}
+        </div>
+      `
+          : ""
+      }
 
       ${
         extra
@@ -441,7 +472,7 @@ function updateMarkers() {
     if (typeof v.lat !== "number" || typeof v.lng !== "number") continue
 
     const coords = L.latLng(v.lat, v.lng)
-    const marker = L.marker(coords, { icon: createRedDotLabelIcon(v.label) })
+    const marker = L.marker(coords, { icon: createRedDotLabelIcon() })
 
     marker.bindPopup(createPopupContent(v), {
       className: "clean-popup",
@@ -551,6 +582,8 @@ function toVenue(e: ApiEvent): Venue {
     lat: e.location?.lat,
     lng: e.location?.lon,
     label: e.bezeichnung,
+    creatorId: e.creator_id ?? e.anbieterID,
+    creatorName: e.anbieter ?? "Unbekannt",
   }
 }
 
@@ -562,6 +595,7 @@ async function loadVenuesAndMarkers() {
   const url = `${API_BASE}/activities`
 
   let list: ApiEvent[]
+
   try {
     const res = await fetch(url, {
       method: "GET",
@@ -576,7 +610,6 @@ async function loadVenuesAndMarkers() {
     }
 
     const data = await res.json()
-
     list = Array.isArray(data) ? (data as ApiEvent[]) : (data?.activities as ApiEvent[])
 
     if (!Array.isArray(list)) {

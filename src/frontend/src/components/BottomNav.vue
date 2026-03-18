@@ -31,10 +31,10 @@
     <button class="nav-item" :class="{ active: activeTab === 'settings' }" @click="$emit('tab', 'settings')">
       <span class="nav-ic">
         <span class="material-icons">
-        settings
+        person
         </span>
       </span>
-      <span>Settings</span>
+      <span>My Profile</span>
     </button>
       <button v-if="canAdd" class="nav-item" :class="{ active: activeTab === 'add-event' }" @click="$emit('tab', 'add-event')">
         <span class="nav-ic">

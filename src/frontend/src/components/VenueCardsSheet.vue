@@ -39,6 +39,12 @@
             </div>
           </div>
         </div>
+
+        <div v-if="v.creatorName" class="creator-row">
+          <span class="material-icons">person</span>
+          <span>{{ v.creatorName }}</span>
+        </div>
+
         <div class="compact-row" v-if="expandedId !== v.id">
           <span v-if="v.whenText" class="mini-chip time-chip">
             <span class="material-icons">calendar_month</span>
@@ -62,8 +68,6 @@
                 {{ v.whenText }}
               </span>
 
-
-
               <span v-if="v.priceText">
                 <span class="material-icons">payments</span>
                 {{ v.priceText }}
@@ -78,6 +82,11 @@
                 <span class="material-icons">not_accessible</span>
                 Not accessible
               </span>
+            </div>
+
+            <div v-if="v.creatorName" class="address creator-detail">
+              <span class="material-icons">person</span>
+              Erstellt von: {{ v.creatorName }}
             </div>
 
             <div class="address" v-if="v.address">
@@ -122,6 +131,7 @@ type Venue = {
   lng?: number
   distanceM?: number
   distanceText?: string
+  creatorName?: string
 }
 
 defineProps<{
@@ -415,6 +425,25 @@ onBeforeUnmount(() => {
 .expand-leave-to {
   opacity: 0;
   transform: translateY(-4px);
+}
+
+.creator-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  color: #6b7280;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.creator-row .material-icons,
+.creator-detail .material-icons {
+  font-size: 16px;
+}
+
+.creator-detail {
+  margin-top: 8px;
 }
 
 @media (max-width: 480px) {
