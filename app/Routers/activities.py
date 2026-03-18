@@ -570,6 +570,8 @@ def activity_to_out(act: Aktivitaet) -> dict:
         "bezeichnung": act.bezeichnung,
         "beschreibung": act.beschreibung,
         "bemerkung": act.bemerkung,
+        "anbieter": act.anbieter.name,
+        "anbieterID": act.anbieter_id,
         "barrierefrei": act.barrierefrei,
         "aktiv": act.aktiv,
         "kategorien": cats,

@@ -176,6 +176,8 @@ class ActivityOut(BaseModel):
     bezeichnung: str
     beschreibung: Optional[str] = None
     bemerkung: Optional[str] = None
+    anbieter : str
+    anbieterID: int
     barrierefrei: bool
     aktiv: bool
     kategorien: List[str] = Field(default_factory=list)
