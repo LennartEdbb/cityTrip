@@ -133,6 +133,7 @@
             placeholder="Hinweis zur Zeit"
           />
         </section>
+
         <section class="form-section">
           <h2>Eintritt</h2>
 
@@ -151,46 +152,51 @@
           />
 
           <div
-            v-if="event.eintritt.kostenmodell !== 'Kostenlos' && event.eintritt.tarife.length > 0"
+            v-if="event.eintritt.kostenmodell !== 'Kostenlos'"
             class="tarif-box"
           >
-            <input
-              v-model="event.eintritt.tarife[0].bezeichnung"
-              type="text"
-              placeholder="Tarifbezeichnung"
-            />
-
-            <div class="grid-2">
-              <select v-model="event.eintritt.tarife[0].dauer_typ">
-                <option value="Stunde">Stunde</option>
-                <option value="Tag">Tag</option>
-                <option value="Woche">Woche</option>
-                <option value="Monat">Monat</option>
-              </select>
-
+            <template
+              v-for="(tarif, index) in event.eintritt.tarife.slice(0, 1)"
+              :key="index"
+            >
               <input
-                v-model.number="event.eintritt.tarife[0].dauer_wert"
-                type="number"
-                min="1"
-                placeholder="Dauerwert"
-              />
-            </div>
-
-            <div class="grid-2">
-              <input
-                v-model.number="event.eintritt.tarife[0].preis"
-                type="number"
-                min="0"
-                step="0.01"
-                placeholder="Preis"
-              />
-
-              <input
-                v-model="event.eintritt.tarife[0].kriterium"
+                v-model="tarif.bezeichnung"
                 type="text"
-                placeholder="Kriterium"
+                placeholder="Tarifbezeichnung"
               />
-            </div>
+
+              <div class="grid-2">
+                <select v-model="tarif.dauer_typ">
+                  <option value="Stunde">Stunde</option>
+                  <option value="Tag">Tag</option>
+                  <option value="Woche">Woche</option>
+                  <option value="Monat">Monat</option>
+                </select>
+
+                <input
+                  v-model.number="tarif.dauer_wert"
+                  type="number"
+                  min="1"
+                  placeholder="Dauerwert"
+                />
+              </div>
+
+              <div class="grid-2">
+                <input
+                  v-model.number="tarif.preis"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="Preis"
+                />
+
+                <input
+                  v-model="tarif.kriterium"
+                  type="text"
+                  placeholder="Kriterium"
+                />
+              </div>
+            </template>
           </div>
         </section>
 
@@ -225,6 +231,12 @@ type Tarif = {
   waehrung: "Euro"
 }
 
+type Eintritt = {
+  kostenmodell: "Kostenlos" | "Gebühr" | "Spende" | "Konsum" | "Mitgliedschaft"
+  hinweis: string
+  tarife: Tarif[]
+}
+
 type ActivityPayload = {
   bezeichnung: string
   beschreibung: string
@@ -254,12 +266,6 @@ type ActivityPayload = {
     hinweis: string
   }
   eintritt: Eintritt
-}
-
-type Eintritt = {
-  kostenmodell: "Kostenlos" | "Gebühr" | "Spende" | "Konsum" | "Mitgliedschaft"
-  hinweis: string
-  tarife: Tarif[]
 }
 
 function createEmptyTarif(): Tarif {
@@ -393,7 +399,11 @@ function getUserIdFromToken(token: string | null): number | null {
   if (!token) return null
 
   try {
-    const base64Url = token.split(".")[1]
+    const parts = token.split(".")
+    const base64Url = parts[1]
+
+    if (!base64Url) return null
+
     const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/")
     const jsonPayload = decodeURIComponent(
       atob(base64)
@@ -520,15 +530,15 @@ async function addEvent() {
     successMessage.value = "Event erfolgreich hinzugefügt!"
     event.value = createEmptyEvent()
     selectedCategory.value = ""
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error adding event:", error)
-    errorMessage.value = error?.message ?? "Unbekannter Fehler"
+    errorMessage.value =
+      error instanceof Error ? error.message : "Unbekannter Fehler"
   } finally {
     isSubmitting.value = false
   }
 }
 </script>
-
 <style scoped>
 .event-page {
   min-height: 100vh;

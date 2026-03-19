@@ -6,7 +6,7 @@
       :canAdd="canAdd"
       :showRoute="showRoute"
       :venues="venues"
-      :currentUser="currentUser"
+      :currentUser="safeCurrentUser"
       @radius-change="onRadiusChange"
       @toggle-view="toggleViewMode"
       @toggle-route="showRoute = !showRoute"
@@ -219,6 +219,18 @@ const sortedVenues = computed(() => {
   const hasDistances = list.some((v) => typeof v.distanceM === "number")
   if (!hasDistances) return list
   return list.sort((a, b) => (a.distanceM ?? 9e15) - (b.distanceM ?? 9e15))
+})
+
+const safeCurrentUser = computed(() => {
+  const u = currentUser.value
+  if (!u || u.id == null) return null
+
+  return {
+    id: u.id,
+    name: u.name ?? "",
+    email: u.email ?? "",
+    rolle: u.rolle ?? "",
+  }
 })
 
 const filteredVenues = computed(() => {
