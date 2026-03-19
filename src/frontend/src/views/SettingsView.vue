@@ -124,7 +124,7 @@
                   </div>
 
                   <div class="event-actions">
-                    <span v-if="event.accessible" class="badge">Accessible</span>
+                    <!-- <span v-if="event.accessible" class="badge">Accessible</span> -->
 
                     <button
                       class="delete-btn"
@@ -133,7 +133,9 @@
                       :title="deletingId === event.id ? 'Deleting...' : 'Delete event'"
                       @click="deleteEvent(event)"
                     >
+                    <div class="settings-head-icon-delete">
                       <span class="material-icons">delete</span>
+                    </div>
                     </button>
                   </div>
                 </div>
@@ -368,6 +370,31 @@ input[readonly] {
 .settings-head-icon .material-icons {
   font-size: 22px;
   color: #2563eb;
+}
+
+.settings-head-icon-delete {
+  width: 48px;
+  height: 48px;
+  border-radius: 16px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  background: linear-gradient(180deg, #ffe0e0 0%, #ffc7c7 100%);
+  border: 1px solid rgba(59, 130, 246, 0.14);
+  box-shadow: 0 10px 24px rgba(59, 130, 246, 0.14);
+}
+
+.settings-head-icon-delete .material-icons {
+  font-size: 22px;
+  color: #eb2525;
+}
+
+.delete-btn {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
 }
 
 .settings-root {
