@@ -2,12 +2,14 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 
+
 from fastapi import Depends, HTTPException
 from fastapi.security import OAuth2PasswordBearer
 from jose import jwt, JWTError
 from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 from sqlalchemy import select
+
 
 from app.db import get_db
 from app.models import Benutzer

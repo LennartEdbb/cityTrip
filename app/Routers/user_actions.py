@@ -52,6 +52,43 @@ def get_profile(
 
     return ProfileOut(name=user.name, rolle=user.rolle, email=user.email, id=user.id, favorites=favorite_acts, my_activities=my_activities)
 
+
+@router.delete("/me")
+def delete_my_account(
+        db: Session = Depends(get_db),
+        user: Benutzer = Depends(get_current_user),
+):
+    # Wenn der User Anbieter ist und Activities erstellt hat: blocken (oder alternativ mitlöschen)
+    has_acts = db.scalar(select(Aktivitaet.id).where(Aktivitaet.anbieter_id == user.id))
+    if has_acts:
+        raise HTTPException(
+            status_code=409,
+            detail="Account kann nicht gelöscht werden, solange eigene Aktivitäten existieren."
+        )
+
+    # Erinnerungen -> hängen an Plänen
+    plan_ids = db.scalars(
+        select(GeplanteAktivitaet.id).where(GeplanteAktivitaet.benutzer_id == user.id)
+    ).all()
+    if plan_ids:
+        db.execute(delete(Erinnerung).where(Erinnerung.geplante_id.in_(plan_ids)))
+
+    # Pläne
+    db.execute(delete(GeplanteAktivitaet).where(GeplanteAktivitaet.benutzer_id == user.id))
+    # Bewertungen
+    db.execute(delete(Bewertung).where(Bewertung.benutzer_id == user.id))
+    # Favoriten
+    db.execute(delete(Favorit).where(Favorit.benutzer_id == user.id))
+
+    # Benutzer löschen
+    db.execute(delete(Benutzer).where(Benutzer.id == user.id))
+    db.commit()
+    return {"ok": True}
+
+
+
+
+
 # ---------- Schemas (lokal, damit es sofort läuft) ----------
 class FavoriteOut(BaseModel):
     id: int
@@ -137,6 +174,13 @@ def add_favorite(
     db.refresh(fav)
     return FavoriteOut(id=fav.id, aktivitaet_id=fav.aktivitaet_id, hinzugefuegt_am=fav.hinzugefuegt_am)
 
+
+@router.post("/logout")
+def logout(
+        _user: Benutzer = Depends(get_current_user),
+):
+    # JWT ist stateless: "Logout" = Token im Frontend löschen.
+    return {"ok": True, "message": "Logged out. Please delete token on client."}
 
 @router.delete("/favorites/{aktivitaet_id}")
 def remove_favorite(

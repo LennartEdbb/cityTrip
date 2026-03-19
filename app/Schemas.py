@@ -9,7 +9,7 @@ from app.models import (
     KategorieEnum, KostenmodellEnum, WaehrungEnum, DauerTypEnum, WochentagEnum
 )
 
-# ---------------- Auth (falls du es noch nicht hast) ----------------
+# ---------------- Auth ----------------
 class RegisterIn(BaseModel):
     name: str
     email: EmailStr
