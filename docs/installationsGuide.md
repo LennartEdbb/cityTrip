@@ -71,15 +71,84 @@ Das Backend ist nun unter `http://127.0.0.1:8000` erreichbar.
 
 ## 7. Testdaten erzeugen
 
-Öffne ein **zweites Terminal** und führe folgende Schritte aus:
+Um Testdaten (z. B. Nutzer und Aktivitäten) anzulegen, gehe wie folgt vor:
 
-1. In das Projektverzeichnis wechseln
-2. Virtuelle Umgebung aktivieren
-3. Befehl ausführen:
+### 7.1 Zweites Terminal öffnen
+
+Öffne ein neues Terminal und führe die folgenden Schritte aus:
 
 ```bash
-python seed_activate.py
+cd src
 ```
+
+Virtuelle Umgebung aktivieren:
+
+**Windows (PowerShell):**
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+```
+
+**Linux / macOS:**
+
+```bash
+source .venv/bin/activate
+```
+
+---
+
+### 7.2 Testnutzer erstellen
+
+Falls noch nicht geschehen, erstelle die Standard-Nutzer:
+
+```bash
+python seed_users.py
+```
+
+---
+
+### 7.3 API-Dokumentation öffnen
+
+Öffne im Browser die API-Oberfläche:
+
+```text
+http://localhost:8000/docs
+```
+
+---
+
+### 7.4 Anmeldung durchführen
+
+1. Klicke auf den **„Authorize“**-Button (Schloss-Symbol)
+2. Melde dich mit folgenden Zugangsdaten an:
+
+```
+Benutzername: Anbieter123@example.com
+Passwort: string
+```
+
+---
+
+### 7.5 Testaktivitäten erzeugen
+
+Nach erfolgreicher Anmeldung kannst du im Terminal folgenden Befehl ausführen:
+
+```bash
+python seed_activities.py
+```
+
+Damit werden Beispiel-Aktivitäten in der Datenbank angelegt.
+
+---
+
+### Ergebnis
+
+Nach Abschluss dieses Schrittes stehen dir:
+
+* Testnutzer
+* Beispiel-Aktivitäten
+
+für die weitere Nutzung und Entwicklung zur Verfügung.
 
 ---
 
