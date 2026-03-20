@@ -118,9 +118,19 @@
 
           <select v-model="event.zeitmodell.typ">
             <option value="einmalig">Einmalig</option>
+            <option value="mehrtaegig">Mehrtägig</option>
           </select>
 
-          <input v-model="event.zeitmodell.datum" type="date" />
+          <template v-if="event.zeitmodell.typ === 'einmalig'">
+            <input v-model="event.zeitmodell.datum" type="date" />
+          </template>
+
+          <template v-else>
+            <div class="grid-2">
+              <input v-model="event.zeitmodell.von_datum" type="date" />
+              <input v-model="event.zeitmodell.bis_datum" type="date" />
+            </div>
+          </template>
 
           <div class="grid-2">
             <input v-model="event.zeitmodell.von" type="time" />
@@ -204,6 +214,13 @@
           <button type="button" class="secondary" @click="fillTestData">
             Testdaten einfügen
           </button>
+          <button
+            type="button"
+            class="secondary"
+            @click="fillMultiDayTestData"
+          >
+            Mehrtägiges Testevent Herford
+          </button>
 
           <button type="submit" :disabled="isSubmitting">
             {{ isSubmitting ? "Speichert..." : "Event hinzufügen" }}
@@ -237,6 +254,25 @@ type Eintritt = {
   tarife: Tarif[]
 }
 
+type ZeitmodellEinmalig = {
+  typ: "einmalig"
+  datum: string
+  von: string
+  bis: string
+  hinweis: string
+}
+
+type ZeitmodellMehrtaegig = {
+  typ: "mehrtaegig"
+  von_datum: string
+  bis_datum: string
+  von: string
+  bis: string
+  hinweis: string
+}
+
+type Zeitmodell = ZeitmodellEinmalig | ZeitmodellMehrtaegig
+
 type ActivityPayload = {
   bezeichnung: string
   beschreibung: string
@@ -258,13 +294,7 @@ type ActivityPayload = {
     lat: number | null
     lon: number | null
   }
-  zeitmodell: {
-    typ: "einmalig"
-    datum: string
-    von: string
-    bis: string
-    hinweis: string
-  }
+  zeitmodell: Zeitmodell
   eintritt: Eintritt
 }
 
@@ -341,6 +371,46 @@ watch(
   { immediate: true }
 )
 
+watch(
+  () => event.value.zeitmodell.typ,
+  (value) => {
+    const previousHint = event.value.zeitmodell.hinweis
+    const previousVon = event.value.zeitmodell.von
+    const previousBis = event.value.zeitmodell.bis
+
+    if (value === "einmalig") {
+      const datum =
+        "datum" in event.value.zeitmodell ? event.value.zeitmodell.datum : ""
+
+      event.value.zeitmodell = {
+        typ: "einmalig",
+        datum,
+        von: previousVon,
+        bis: previousBis,
+        hinweis: previousHint
+      }
+    } else {
+      const von_datum =
+        "von_datum" in event.value.zeitmodell
+          ? event.value.zeitmodell.von_datum
+          : ""
+      const bis_datum =
+        "bis_datum" in event.value.zeitmodell
+          ? event.value.zeitmodell.bis_datum
+          : ""
+
+      event.value.zeitmodell = {
+        typ: "mehrtaegig",
+        von_datum,
+        bis_datum,
+        von: previousVon,
+        bis: previousBis,
+        hinweis: previousHint
+      }
+    }
+  }
+)
+
 function fillTestData() {
   selectedCategory.value = "Musik"
 
@@ -382,6 +452,56 @@ function fillTestData() {
           dauer_typ: "Stunde",
           dauer_wert: 3,
           preis: 18.5,
+          kriterium: "Erwachsene",
+          waehrung: "Euro"
+        }
+      ]
+    }
+  }
+}
+
+function fillMultiDayTestData() {
+  selectedCategory.value = "Musik"
+
+  event.value = {
+    bezeichnung: "Festival Herford Testevent",
+    beschreibung:
+      "Ein mehrtägiges Testevent in Herford mit Live-Musik und Rahmenprogramm.",
+    bemerkung: "Bitte ignorieren – mehrtägiger Testeintrag",
+    kategorien: ["Musik"],
+    barrierefrei: true,
+    aktiv: true,
+    location: {
+      bezeichnung: "Stadtpark Herford",
+      beschreibung: "Open-Air-Veranstaltungsfläche im Stadtpark Herford",
+      bemerkung: "Zentral gelegen, gut erreichbar",
+      anschrift: {
+        strasse: "Wiesestraße",
+        hausnummer: "90",
+        ort: "Herford",
+        plz: "32052",
+        land: "Deutschland"
+      },
+      lat: 52.1146,
+      lon: 8.6734
+    },
+    zeitmodell: {
+      typ: "mehrtaegig",
+      von_datum: "2026-05-15",
+      bis_datum: "2026-05-17",
+      von: "14:00",
+      bis: "22:00",
+      hinweis: "Täglich geöffnet, Einlass ab 13:30"
+    },
+    eintritt: {
+      kostenmodell: "Gebühr",
+      hinweis: "Festivalpass online erhältlich",
+      tarife: [
+        {
+          bezeichnung: "Festivalpass",
+          dauer_typ: "Tag",
+          dauer_wert: 3,
+          preis: 39.9,
           kriterium: "Erwachsene",
           waehrung: "Euro"
         }
@@ -435,6 +555,20 @@ async function addEvent() {
     return
   }
 
+  const hasRequiredZeitmodell =
+    event.value.zeitmodell.typ === "einmalig"
+      ? !!(
+          event.value.zeitmodell.datum &&
+          event.value.zeitmodell.von &&
+          event.value.zeitmodell.bis
+        )
+      : !!(
+          event.value.zeitmodell.von_datum &&
+          event.value.zeitmodell.bis_datum &&
+          event.value.zeitmodell.von &&
+          event.value.zeitmodell.bis
+        )
+
   const required =
     event.value.bezeichnung &&
     event.value.location.bezeichnung &&
@@ -443,9 +577,7 @@ async function addEvent() {
     event.value.location.anschrift.plz &&
     event.value.location.anschrift.ort &&
     event.value.location.anschrift.land &&
-    event.value.zeitmodell.datum &&
-    event.value.zeitmodell.von &&
-    event.value.zeitmodell.bis &&
+    hasRequiredZeitmodell &&
     event.value.kategorien.length > 0
 
   if (!required) {
@@ -477,13 +609,23 @@ async function addEvent() {
       lat: event.value.location.lat,
       lon: event.value.location.lon
     },
-    zeitmodell: {
-      typ: "einmalig",
-      datum: event.value.zeitmodell.datum,
-      von: normalizeTime(event.value.zeitmodell.von),
-      bis: normalizeTime(event.value.zeitmodell.bis),
-      hinweis: event.value.zeitmodell.hinweis
-    },
+    zeitmodell:
+      event.value.zeitmodell.typ === "einmalig"
+        ? {
+            typ: "einmalig",
+            datum: event.value.zeitmodell.datum,
+            von: normalizeTime(event.value.zeitmodell.von),
+            bis: normalizeTime(event.value.zeitmodell.bis),
+            hinweis: event.value.zeitmodell.hinweis
+          }
+        : {
+            typ: "mehrtaegig",
+            von_datum: event.value.zeitmodell.von_datum,
+            bis_datum: event.value.zeitmodell.bis_datum,
+            von: normalizeTime(event.value.zeitmodell.von),
+            bis: normalizeTime(event.value.zeitmodell.bis),
+            hinweis: event.value.zeitmodell.hinweis
+          },
     eintritt: {
       kostenmodell: event.value.eintritt.kostenmodell,
       hinweis: event.value.eintritt.hinweis,

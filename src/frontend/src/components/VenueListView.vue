@@ -16,19 +16,58 @@
         </button>
       </div>
 
-        <div class="filters">
-          <input class="filter-input" placeholder="Suchen..." v-model="q" />
-          <label class="filter-check"><input type="checkbox" v-model="accessibleOnly" /> Barrierefrei</label>
-          <select v-model="selectedTag">
-            <option value="">Alle Kategorien</option>
-            <option v-for="t in tags" :key="t" :value="t">{{ t }}</option>
+      <div class="filters">
+        <input class="filter-input" placeholder="Suchen..." v-model="q" />
+
+        <div class="date-filters">
+          <select class="filter-select" v-model="selectedMonth">
+            <option value="">Monat wählen</option>
+            <option
+              v-for="month in months"
+              :key="month.value"
+              :value="month.value"
+            >
+              {{ month.label }}
+            </option>
+          </select>
+
+          <select class="filter-select" v-model="selectedDay">
+            <option value="">Tag wählen</option>
+            <option
+              v-for="day in daysInSelectedMonth"
+              :key="day"
+              :value="String(day)"
+            >
+              {{ day }}
+            </option>
           </select>
         </div>
 
-        <div class="list-sub">
-          Showing {{ filtered.length }} of {{ venues.length }}
-          <span v-if="typeof radius === 'number'"> · Radius: {{ radius }}km</span>
+        <label class="filter-check">
+          <input type="checkbox" v-model="accessibleOnly" />
+          Barrierefrei
+        </label>
+
+        <div class="tag-filters" v-if="tags.length">
+          <label
+            v-for="t in tags"
+            :key="t"
+            class="filter-check tag-check"
+          >
+            <input
+              type="checkbox"
+              :value="t"
+              v-model="selectedTags"
+            />
+            {{ t }}
+          </label>
         </div>
+      </div>
+
+      <div class="list-sub">
+        Showing {{ filtered.length }} of {{ venues.length }}
+        <span v-if="typeof radius === 'number'"> · Radius: {{ radius }}km</span>
+      </div>
     </div>
 
     <div v-if="!venues?.length" class="empty">
@@ -69,6 +108,8 @@
 </template>
 
 <script setup lang="ts">
+import { ref, computed, watch } from 'vue'
+
 type Venue = {
   id: string
   label?: string
@@ -103,28 +144,117 @@ function toggleView() {
   emit("toggle-view")
 }
 
-import { ref, computed } from 'vue'
-
 const q = ref("")
 const accessibleOnly = ref(false)
-const selectedTag = ref("")
+const selectedTags = ref<string[]>([])
+const selectedMonth = ref("")
+const selectedDay = ref("")
+
+const months = [
+  { value: "1", label: "Januar" },
+  { value: "2", label: "Februar" },
+  { value: "3", label: "März" },
+  { value: "4", label: "April" },
+  { value: "5", label: "Mai" },
+  { value: "6", label: "Juni" },
+  { value: "7", label: "Juli" },
+  { value: "8", label: "August" },
+  { value: "9", label: "September" },
+  { value: "10", label: "Oktober" },
+  { value: "11", label: "November" },
+  { value: "12", label: "Dezember" },
+]
 
 const tags = computed(() => {
   const s: string[] = []
   for (const v of props.venues || []) {
-    for (const t of v.tags || []) if (t && !s.includes(t)) s.push(t)
+    for (const t of v.tags || []) {
+      if (t && !s.includes(t)) s.push(t)
+    }
   }
   return s.sort()
 })
+
+const daysInSelectedMonth = computed(() => {
+  const month = Number(selectedMonth.value)
+
+  if (!month) {
+    return Array.from({ length: 31 }, (_, i) => i + 1)
+  }
+
+  const days = new Date(2024, month, 0).getDate()
+  return Array.from({ length: days }, (_, i) => i + 1)
+})
+
+watch(selectedMonth, () => {
+  if (!selectedDay.value) return
+
+  const maxDay = daysInSelectedMonth.value[daysInSelectedMonth.value.length - 1]
+  if (Number(selectedDay.value) > maxDay) {
+    selectedDay.value = ""
+  }
+})
+
+function parseVenueDate(value?: string) {
+  if (!value) return null
+
+  const parsed = new Date(value)
+  if (!Number.isNaN(parsed.getTime())) {
+    return {
+      day: parsed.getDate(),
+      month: parsed.getMonth() + 1,
+    }
+  }
+
+  const ddmmyyyy = value.match(/\b(\d{1,2})[.\-/](\d{1,2})(?:[.\-/]\d{2,4})?\b/)
+  if (ddmmyyyy) {
+    return {
+      day: Number(ddmmyyyy[1]),
+      month: Number(ddmmyyyy[2]),
+    }
+  }
+
+  return null
+}
 
 const filtered = computed(() => {
   let list = props.venues ?? []
   if (q.value) {
     const qq = q.value.toLowerCase()
-    list = list.filter((v) => (v.name + ' ' + v.address + ' ' + (v.tags || []).join(' ')).toLowerCase().includes(qq))
+    list = list.filter((v) =>
+      (v.name + " " + v.address + " " + (v.tags || []).join(" "))
+        .toLowerCase()
+        .includes(qq)
+    )
   }
-  if (accessibleOnly.value) list = list.filter((v) => !!v.accessible)
-  if (selectedTag.value) list = list.filter((v) => (v.tags || []).includes(selectedTag.value))
+
+  if (accessibleOnly.value) {
+    list = list.filter((v) => !!v.accessible)
+  }
+
+  if (selectedTags.value.length) {
+    list = list.filter((v) =>
+      selectedTags.value.some((tag) => (v.tags || []).includes(tag))
+    )
+  }
+
+  if (selectedMonth.value || selectedDay.value) {
+    list = list.filter((v) => {
+      const venueDate = parseVenueDate(v.whenText)
+      if (!venueDate) return false
+
+      if (selectedMonth.value && venueDate.month !== Number(selectedMonth.value)) {
+        return false
+      }
+
+      if (selectedDay.value && venueDate.day !== Number(selectedDay.value)) {
+        return false
+      }
+
+      return true
+    })
+  }
+
   return list
 })
 </script>
@@ -132,21 +262,46 @@ const filtered = computed(() => {
 <style scoped>
 .filters {
   display: flex;
-  gap: 8px;
-  align-items: center;
+  flex-direction: column;
+  gap: 10px;
+  align-items: stretch;
   justify-content: center;
   margin-bottom: 8px;
 }
 
-.filter-input {
+.filter-input,
+.filter-select {
   padding: 8px 10px;
   border-radius: 10px;
   border: 1px solid #dbe3ee;
+  background: #fff;
+}
+
+.date-filters {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
 }
 
 .filter-check {
   font-size: 13px;
   color: #334155;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tag-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+}
+
+.tag-check {
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid #dbe3ee;
+  background: #fff;
 }
 
 .list-wrap {
