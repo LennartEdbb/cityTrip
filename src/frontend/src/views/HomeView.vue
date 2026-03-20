@@ -127,12 +127,3 @@ onBeforeUnmount(() => {
   border: 2px solid white;
 }
 </style>
-
-=======
-<template>
-  <main>
-    <TheWelcome />
-  </main>
-</template>
-
->>>>>>> 84f4661a7530266dcadcf81824100c8aeba3b2b4
