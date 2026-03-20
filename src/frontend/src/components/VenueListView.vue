@@ -189,7 +189,9 @@ const daysInSelectedMonth = computed(() => {
 watch(selectedMonth, () => {
   if (!selectedDay.value) return
 
-  const maxDay = daysInSelectedMonth.value[daysInSelectedMonth.value.length - 1]
+  const days = daysInSelectedMonth.value
+  if (!days.length) return
+  const maxDay = days[days.length - 1] || 0
   if (Number(selectedDay.value) > maxDay) {
     selectedDay.value = ""
   }
