@@ -111,7 +111,7 @@ Folgende Informationen werden angezeigt:
 
 Wenn ein Nutzer als **Anbieter** eingeloggt ist:
 
-* ➕ **„Add Event“-Button (ganz rechts)**
+* **„Add Event“-Button (ganz rechts)**
 
   * Ermöglicht das Erstellen eigener Events
 
